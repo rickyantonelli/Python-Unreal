@@ -1,10 +1,15 @@
-from PyQt6.QtWidgets import *
+import unreal
+import sys
+from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout
+
 import graphicview   
+import unreallibrary
         
 class GridWidget(QWidget):
     def __init__(self):
         super().__init__()
         self.view = graphicview.GridGraphicsView()
+        self.UEL = unreallibrary.UnrealLibrary()
         
         self.addCubeButton = QPushButton("Add Cube")
         self.addSphereButton = QPushButton("Add Sphere")
@@ -24,24 +29,27 @@ class GridWidget(QWidget):
         self.addSphereButton.pressed.connect(self.addSphere)
         
     def addCube(self):
-        print('adding cube')
-        self.view.addAsset('square', 0, 0, 15, 15)
+        item = self.view.addAsset('square', 0, 0, 15, 15)
+        unrealActor = self.UEL.spawnActor()
+        item.unrealAsset = unrealActor
         
     def addSphere(self):
-        gridWidget.view.addAsset('circle', 20, 20, 15, 15)
+        self.view.addAsset('circle', 20, 20, 15, 15)
 
-if __name__ == '__main__':
-    import sys
-
-    app = QApplication(sys.argv)
+def main():
+    if not QApplication.instance():
+        app = QApplication(sys.argv)
+    else:
+        app = QApplication.instance()
     window = QMainWindow()
     window.setWindowTitle("Unreal Blockout Widget")
     gridWidget = GridWidget()
     window.setCentralWidget(gridWidget)
     
     gridWidget.view.createGrid(20, 800, 600)
-    gridWidget.view.addAsset('square', 0, 0, 15, 15)
-    gridWidget.view.addAsset('circle', 20, 20, 15, 15)
     
     window.show()
     sys.exit(app.exec())
+
+if __name__ == '__main__':
+    main()

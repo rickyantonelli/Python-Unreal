@@ -1,20 +1,15 @@
 import sys
-from PyQt6.QtCore import Qt, QPointF, QRectF
-from PyQt6.QtGui import QPen, QBrush, QColor, QPainter, QPolygonF
-from PyQt6.QtWidgets import QApplication, QGraphicsView, QGraphicsScene, QGraphicsItem, QGraphicsEllipseItem, QMainWindow, QGraphicsRectItem, QGraphicsPolygonItem
+from PySide6.QtCore import Qt, QPointF, QRectF
+from PySide6.QtGui import QPen, QBrush, QColor, QPainter, QPolygonF
+from PySide6.QtWidgets import QApplication, QGraphicsView, QGraphicsScene, QGraphicsItem, QGraphicsEllipseItem, QMainWindow, QGraphicsRectItem, QGraphicsPolygonItem
 
-class DraggableItem(QGraphicsItem):
-    def __init__(self, x, y, width, height):
-        super().__init__(x, y, width, height)
+class DraggableItem:
+    def initDraggable(self):
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges)
-        self.setBrush(QBrush(Qt.GlobalColor.blue))
-        self.setPen(QPen(Qt.GlobalColor.black))
         self.setAcceptHoverEvents(True)
         self.offset = QPointF(0, 0)
-        self.setPos(x, y)
-        self.width = width
-        self.height = height
+        self.unrealAsset = None
 
     def mousePressEvent(self, event):
         self.offset = event.pos()
@@ -33,12 +28,18 @@ class DraggableItem(QGraphicsItem):
 class DraggableSquare(QGraphicsRectItem, DraggableItem):
     def __init__(self, x, y, width, height):
         QGraphicsRectItem.__init__(self, QRectF(0, 0, width, height))
-        DraggableItem.__init__(self, x, y, width, height)
+        self.initDraggable()
+        self.setBrush(QBrush(Qt.GlobalColor.blue))
+        self.setPen(QPen(Qt.GlobalColor.black))
+        self.setPos(x, y)
         
 class DraggableEllipse(QGraphicsEllipseItem, DraggableItem):
     def __init__(self, x, y, width, height):
         QGraphicsEllipseItem.__init__(self, QRectF(0, 0, width, height))
-        DraggableItem.__init__(self, x, y, width, height)
+        self.initDraggable()
+        self.setBrush(QBrush(Qt.GlobalColor.blue))
+        self.setPen(QPen(Qt.GlobalColor.black))
+        self.setPos(x, y)
 
 class GridGraphicsView(QGraphicsView):
     def __init__(self):
@@ -59,5 +60,7 @@ class GridGraphicsView(QGraphicsView):
             asset = DraggableEllipse(posX, posY, width, height)
         else:
             asset = DraggableSquare(posX, posY, width, height)
+            
         self.scene.addItem(asset)
+        return asset
         
