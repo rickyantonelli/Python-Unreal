@@ -1,4 +1,6 @@
 import sys
+import unreal
+import unreallibrary
 from PySide6.QtCore import Qt, QPointF, QRectF
 from PySide6.QtGui import QPen, QBrush, QColor, QPainter, QPolygonF
 from PySide6.QtWidgets import QApplication, QGraphicsView, QGraphicsScene, QGraphicsItem, QGraphicsEllipseItem, QMainWindow, QGraphicsRectItem, QGraphicsPolygonItem
@@ -10,6 +12,7 @@ class DraggableItem:
         self.setAcceptHoverEvents(True)
         self.offset = QPointF(0, 0)
         self.unrealAsset = None
+        self.UEL = unreallibrary.UnrealLibrary()
 
     def mousePressEvent(self, event):
         self.offset = event.pos()
@@ -17,6 +20,9 @@ class DraggableItem:
         
     def mouseReleaseEvent(self, event):
         print("newPos is {},{}".format(event.pos().x(), event.pos().y()))
+        newLocation = unreal.Vector(event.pos().x(), 0, event.pos().y())
+        if self.unrealAsset:
+            self.unrealAsset.set_actor_location(newLocation)
         super().mouseReleaseEvent(event)
 
     def mouseMoveEvent(self, event):
