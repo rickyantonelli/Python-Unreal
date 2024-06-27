@@ -1,4 +1,3 @@
-import sys
 import unreal
 import unreallibrary
 from PySide6.QtCore import Qt, QPointF, QRectF
@@ -15,21 +14,29 @@ class DraggableItem:
         self.UEL = unreallibrary.UnrealLibrary()
 
     def mousePressEvent(self, event):
+        print('mouse pressing')
         self.offset = event.pos()
-        super().mousePressEvent(event)
+        if isinstance(super(), QGraphicsItem):
+            super().mouseReleaseEvent(event)
         
     def mouseReleaseEvent(self, event):
         print("newPos is {},{}".format(event.pos().x(), event.pos().y()))
         newLocation = unreal.Vector(event.pos().x(), 0, event.pos().y())
         if self.unrealAsset:
-            self.unrealAsset.set_actor_location(newLocation)
-        super().mouseReleaseEvent(event)
-
+            print("ASSET")
+            self.unrealAsset.set_actor_location(newLocation, False, False)
+        else:
+            print("not an asset")
+        if isinstance(super(), QGraphicsItem):
+            super().mouseReleaseEvent(event)
+        
     def mouseMoveEvent(self, event):
+        print('mouse moving')
         # TODO: Currently can drag this off screen
         newPos = event.scenePos() - self.offset
         self.setPos(newPos.x(), newPos.y())
-        super().mouseMoveEvent(event)
+        if isinstance(super(), QGraphicsItem):
+            super().mouseReleaseEvent(event)
         
 class DraggableSquare(QGraphicsRectItem, DraggableItem):
     def __init__(self, x, y, width, height):
@@ -39,6 +46,15 @@ class DraggableSquare(QGraphicsRectItem, DraggableItem):
         self.setPen(QPen(Qt.GlobalColor.black))
         self.setPos(x, y)
         
+    def mouseReleaseEvent(self, event):
+        DraggableItem.mouseReleaseEvent(self, event)
+        
+    def mouseMoveEvent(self, event):
+        DraggableItem.mouseMoveEvent(self, event)
+    
+    def mousePressEvent(self, event):
+        DraggableItem.mousePressEvent(self, event)
+        
 class DraggableEllipse(QGraphicsEllipseItem, DraggableItem):
     def __init__(self, x, y, width, height):
         QGraphicsEllipseItem.__init__(self, QRectF(0, 0, width, height))
@@ -46,6 +62,15 @@ class DraggableEllipse(QGraphicsEllipseItem, DraggableItem):
         self.setBrush(QBrush(Qt.GlobalColor.blue))
         self.setPen(QPen(Qt.GlobalColor.black))
         self.setPos(x, y)
+        
+    def mouseReleaseEvent(self, event):
+        DraggableItem.mouseReleaseEvent(self, event)
+        
+    def mouseMoveEvent(self, event):
+        DraggableItem.mouseMoveEvent(self, event)
+    
+    def mousePressEvent(self, event):
+        DraggableItem.mousePressEvent(self, event)
 
 class GridGraphicsView(QGraphicsView):
     def __init__(self):

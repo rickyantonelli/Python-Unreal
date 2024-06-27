@@ -1,6 +1,7 @@
 import unreal
 import sys
 from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout
+from PySide6.QtCore import QThread
 
 import graphicview   
 import unreallibrary
@@ -36,20 +37,13 @@ class GridWidget(QWidget):
     def addSphere(self):
         self.view.addAsset('circle', 20, 20, 15, 15)
 
-def main():
-    if not QApplication.instance():
-        app = QApplication(sys.argv)
-    else:
-        app = QApplication.instance()
-    window = QMainWindow()
-    window.setWindowTitle("Unreal Blockout Widget")
-    gridWidget = GridWidget()
-    window.setCentralWidget(gridWidget)
-    
-    gridWidget.view.createGrid(20, 800, 600)
-    
-    window.show()
-    sys.exit(app.exec())
 
-if __name__ == '__main__':
-    main()
+# TODO: Normally we would use if __name__ == '__main__':
+# but this blocks the widget from running in Unreal, for now we'll leave it out
+app = None
+if not QApplication.instance():
+    app = QApplication(sys.argv)
+gridWidget = GridWidget()
+gridWidget.view.createGrid(20, 800, 600)
+gridWidget.show()
+unreal.parent_external_window_to_slate(gridWidget.winId())
