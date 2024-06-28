@@ -7,8 +7,10 @@ class UnrealLibrary():
         self.EAL = unreal.EditorAssetLibrary
         self.ELL = unreal.EditorLevelLibrary
          
-    def spawnActor(self):
+    def spawnActor(self, shape = 'cube'):
         assetPath = "/Engine/BasicShapes/Cube.Cube"
+        if shape == 'sphere':
+            assetPath = "/Engine/BasicShapes/Sphere.Sphere"
         actorClass = self.EAL.load_asset(assetPath)
         
         actorLocation = unreal.Vector(0, 0, 0)

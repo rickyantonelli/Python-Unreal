@@ -30,12 +30,14 @@ class GridWidget(QWidget):
         self.addSphereButton.pressed.connect(self.addSphere)
         
     def addCube(self):
-        item = self.view.addAsset('square', 0, 0, 15, 15)
-        unrealActor = self.UEL.spawnActor()
+        item = self.view.addAsset('square', 0, 0, 25, 25)
+        unrealActor = self.UEL.spawnActor('cube')
         item.unrealAsset = unrealActor
         
     def addSphere(self):
-        self.view.addAsset('circle', 20, 20, 15, 15)
+        item = self.view.addAsset('circle', 0, 0, 25, 25)
+        unrealActor = self.UEL.spawnActor('sphere')
+        item.unrealAsset = unrealActor
 
 
 # TODO: Normally we would use if __name__ == '__main__':
