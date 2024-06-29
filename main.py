@@ -7,6 +7,7 @@ import graphicview
 import unreallibrary
         
 class GridWidget(QWidget):
+    """A QWidget to display a 2D grid that reflects items into the 3D space of the current Unreal Engine map"""
     def __init__(self):
         super().__init__()
         self.view = graphicview.GridGraphicsView()
@@ -17,26 +18,23 @@ class GridWidget(QWidget):
         
         self.vertLayout = QVBoxLayout(self)
         self.buttonLayout = QHBoxLayout()
-        
         self.vertLayout.addWidget(self.view)
         self.buttonLayout.addWidget(self.addCubeButton)
         self.buttonLayout.addWidget(self.addSphereButton)
-        
         self.vertLayout.addLayout(self.buttonLayout)
-        
         self.setLayout(self.vertLayout)
         
-        self.addCubeButton.pressed.connect(self.addCube)
-        self.addSphereButton.pressed.connect(self.addSphere)
+        self.addCubeButton.pressed.connect(lambda: self.addItem('square'))
+        self.addSphereButton.pressed.connect(lambda: self.addItem('circle'))
         
-    def addCube(self):
-        item = self.view.addAsset('square', 0, 0, 25, 25)
-        unrealActor = self.UEL.spawnActor('cube')
-        item.unrealAsset = unrealActor
+    def addItem(self, itemShape='square'):
+        """Adds an item to the grid (square or circle), and an Unreal Engine asset (cube or sphere)
         
-    def addSphere(self):
-        item = self.view.addAsset('circle', 0, 0, 25, 25)
-        unrealActor = self.UEL.spawnActor('sphere')
+        Args:
+            itemShape (str): The shape that we want to pass in
+        """
+        item = self.view.addItem(itemShape, 0, 0, 25, 25)
+        unrealActor = self.UEL.spawnActor(itemShape, x=0, y=0)
         item.unrealAsset = unrealActor
 
 
@@ -46,6 +44,8 @@ app = None
 if not QApplication.instance():
     app = QApplication(sys.argv)
 gridWidget = GridWidget()
-gridWidget.view.createGrid(20, 800, 600)
+gridWidget.view.createGrid(20, 1600, 600)
 gridWidget.show()
+
+# parent widget to unreal
 unreal.parent_external_window_to_slate(gridWidget.winId())
