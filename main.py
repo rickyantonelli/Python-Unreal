@@ -24,8 +24,8 @@ class GridWidget(QWidget):
         self.vertLayout.addLayout(self.buttonLayout)
         self.setLayout(self.vertLayout)
         
-        self.addCubeButton.pressed.connect(lambda: self.addItem('square'))
-        self.addSphereButton.pressed.connect(lambda: self.addItem('circle'))
+        self.addCubeButton.pressed.connect(lambda x = 'square': self.addItem(x))
+        self.addSphereButton.pressed.connect(lambda x = 'circle':self.addItem(x))
         
     def addItem(self, itemShape='square'):
         """Adds an item to the grid (square or circle), and an Unreal Engine asset (cube or sphere)
