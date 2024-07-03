@@ -47,15 +47,15 @@ class SquareItem(QGraphicsRectItem):
         self.UEL = unreallibrary.UnrealLibrary()
         
         self.handles = {}
-        self.handleSelected = None
-        self.mousePressPos = None
-        self.mousePressRect = None
         
         self.unrealAsset = None
-        self.boundary = None
         self.position = None
         self.width = width
         self.height = height
+        
+        self.selected_edge = None
+        self.click_pos = self.click_rect = None
+        
         
         self.handlePositioning()
         
@@ -94,13 +94,21 @@ class SquareItem(QGraphicsRectItem):
         Args:
             event (QMouseEvent): The qt event
         """
-        # retrieve what type of point this is
-        self.offset = event.pos()
-        self.handleSelected = self.handleAt(event.pos())
-        self.mousePressPos = event.pos()
-        if self.handleSelected:
-            self.mousePressRect = self.boundingRect()
-            
+        
+        self.click_pos = event.pos()
+        rect = self.rect()
+        if abs(rect.left() - self.click_pos.x()) < 5:
+            self.selected_edge = 'left'
+        elif abs(rect.right() - self.click_pos.x()) < 5:
+            self.selected_edge = 'right'
+        elif abs(rect.top() - self.click_pos.y()) < 5:
+            self.selected_edge = 'top'
+        elif abs(rect.bottom() - self.click_pos.y()) < 5:
+            self.selected_edge = 'bottom'
+        else:
+            self.selected_edge = None
+        self.click_pos = event.pos()
+        self.click_rect = rect
         super().mousePressEvent(event)
         
     def mouseMoveEvent(self, event):
@@ -109,16 +117,67 @@ class SquareItem(QGraphicsRectItem):
         Args:
             event (QMouseEvent): The qt event
         """
-        self.position = event.scenePos() - self.offset
-        if self.handleSelected:
-            self.resizeItem(event.pos())
-        else:       
-            # Only call super if the move event stays within the boundary
-            if self.position.x() < self.boundary.left() or self.position.x() + self.boundingRect().width() > self.boundary.right():
-                return
-            if self.position.y() < self.boundary.top() or self.position.y() + self.boundingRect().height() > self.boundary.bottom():
-                return
-            super().mouseMoveEvent(event)
+        pos = event.pos()
+        x_diff = pos.x() - self.click_pos.x()
+        y_diff = pos.y() - self.click_pos.y()
+
+        # Start with the rectangle as it was when clicked.
+        rect = QRectF(self.click_rect)
+
+        # Then adjust by the distance the mouse moved.
+        if self.selected_edge is None:
+            rect.translate(x_diff, y_diff)
+        elif self.selected_edge == 'top':
+            rect.adjust(0, y_diff, 0, 0)
+        elif self.selected_edge == 'left':
+            rect.adjust(x_diff, 0, 0, 0)
+        elif self.selected_edge == 'bottom':
+            rect.adjust(0, 0, 0, y_diff)
+        elif self.selected_edge == 'right':
+            rect.adjust(0, 0, x_diff, 0)
+
+        scene_rect = self.scene().sceneRect()
+        view_left = scene_rect.left()
+        view_top = scene_rect.top()
+        view_right = scene_rect.right()
+        view_bottom = scene_rect.bottom()
+
+        # Next, check if the rectangle has been dragged out of bounds.
+        if rect.top() < view_top:
+            if self.selected_edge is None:
+                rect.translate(0, view_top-rect.top())
+            else:
+                rect.setTop(view_top)
+        if rect.left() < view_left:
+            if self.selected_edge is None:
+                rect.translate(view_left-rect.left(), 0)
+            else:
+                rect.setLeft(view_left)
+        if view_bottom < rect.bottom():
+            if self.selected_edge is None:
+                rect.translate(0, view_bottom - rect.bottom())
+            else:
+                rect.setBottom(view_bottom)
+        if view_right < rect.right():
+            if self.selected_edge is None:
+                rect.translate(view_right - rect.right(), 0)
+            else:
+                rect.setRight(view_right)
+
+        # Also check if the rectangle has been dragged inside out.
+        if rect.width() < 5:
+            if self.selected_edge == 'left':
+                rect.setLeft(rect.right() - 5)
+            else:
+                rect.setRight(rect.left() + 5)
+        if rect.height() < 5:
+            if self.selected_edge == 'top':
+                rect.setTop(rect.bottom() - 5)
+            else:
+                rect.setBottom(rect.top() + 5)
+
+        # Finally, update the rect that is now guaranteed to stay in bounds.
+        self.setRect(rect)
         
     def mouseReleaseEvent(self, event):
         """Calls the mouseReleaseEvent, resets variables, and moves its Unreal counterpart
@@ -127,24 +186,21 @@ class SquareItem(QGraphicsRectItem):
             event (QMouseEvent): The qt event
         """
         super().mouseReleaseEvent(event)
+        self.handlePositioning()
         
         # apply the change to the item to its Unreal engine counterpart
+        rect = QRectF(self.rect())
         
-        if self.position:
-            print("self.position is {},{}".format(self.position.x(), self.position.y()))
-            newLocation = unreal.Vector(self.position.x(), self.position.y(), 0)
-            # oldUnrealLocation = self.unrealAsset.get_actor_location()
-            # newUnrealX = oldUnrealLocation.x + self.pos().x() - self.mousePressPos.x()
-            # newUnrealY = oldUnrealLocation.y + self.pos().y() - self.mousePressPos.y()
-            # newLocation = unreal.Vector(newUnrealX, newUnrealY, 0)
-            if self.unrealAsset:
-                # no need to sweep or teleport, since we are just placing actors
-                self.unrealAsset.set_actor_location(newLocation, False, False)
-        
-        # since we're releasing, reset these variables to None
-        self.handleSelected = None
-        self.mousePressPos = None
-        self.mousePressRect = None
+        print("self.position is {},{}".format(rect.x(), rect.y()))
+        newLocation = unreal.Vector(rect.x(), rect.y(), 0)
+        # oldUnrealLocation = self.unrealAsset.get_actor_location()
+        # newUnrealX = oldUnrealLocation.x + self.pos().x() - self.mousePressPos.x()
+        # newUnrealY = oldUnrealLocation.y + self.pos().y() - self.mousePressPos.y()
+        # newLocation = unreal.Vector(newUnrealX, newUnrealY, 0)
+        if self.unrealAsset:
+            # no need to sweep or teleport, since we are just placing actors
+            self.unrealAsset.set_actor_location(newLocation, False, False)
+    
         self.update()
                 
     def hoverMoveEvent(self, event):
@@ -158,116 +214,7 @@ class SquareItem(QGraphicsRectItem):
         """Resets the cursor type back to the ArrowCursor and applies the hoverLeaveEvent"""
         self.setCursor(Qt.ArrowCursor)
         super().hoverLeaveEvent(event)
-        
-    # def boundingRect(self):
-    #     """Takes the bounding rect and returns it with the extra margins and space in mind
-        
-    #     Returns:
-    #         The adjusted rect
-    #     """
-    #     o = self.resizeMargin + self.resizeSpace
-    #     return self.rect().adjusted(-o, -o, o, o)
-            
-    def setBoundary(self, rect):
-        """Sets the boundary for the item, to ensure that it cannot be dragged out of the grid
-        
-        Args:
-            rect (QRect): The grid's boundary
-        """
-        self.boundary = rect
-    
-    # resizing referenced from https://stackoverflow.com/questions/34429632/resize-a-qgraphicsitem-with-the-mouse
-    def resizeItem(self, pos):
-        """Resizes the item based on where the cursor was pulled from
-        
-            Ex: If pulled from the bottom middle down, will be resized only vertically but not horizontally
-        """
-        offset = self.resizeMargin + self.resizeSpace
-        boundingRect = self.boundingRect()
-        rect = self.rect()
-        diff = QPointF(0, 0)
-        
-        self.prepareGeometryChange()
-        
-        if self.handleSelected == self.topLeft:
-            fromX = self.mousePressRect.left()
-            fromY = self.mousePressRect.top()
-            toX = fromX + pos.x() - self.mousePressPos.x()
-            toY = fromY + pos.y() - self.mousePressPos.y()
-            diff.setX(toX - fromX)
-            diff.setY(toY - fromY)
-            boundingRect.setLeft(toX)
-            boundingRect.setTop(toY)
-            rect.setLeft(boundingRect.left() + offset)
-            rect.setTop(boundingRect.top() + offset)
-            self.setRect(rect)
-        elif self.handleSelected == self.topMiddle:
-            fromY = self.mousePressRect.top()
-            toY = fromY + pos.y() - self.mousePressPos.y()
-            diff.setY(toY - fromY)
-            boundingRect.setTop(toY)
-            rect.setTop(boundingRect.top() + offset)
-            self.setRect(rect)
-        elif self.handleSelected == self.topRight:
-            fromX = self.mousePressRect.right()
-            fromY = self.mousePressRect.top()
-            toX = fromX + pos.x() - self.mousePressPos.x()
-            toY = fromY + pos.y() - self.mousePressPos.y()
-            diff.setX(toX - fromX)
-            diff.setY(toY - fromY)
-            boundingRect.setRight(toX)
-            boundingRect.setTop(toY)
-            rect.setRight(boundingRect.right() - offset)
-            rect.setTop(boundingRect.top() + offset)
-            self.setRect(rect)
-        elif self.handleSelected == self.middleLeft:
-            fromX = self.mousePressRect.left()
-            toX = fromX + pos.x() - self.mousePressPos.x()
-            diff.setX(toX - fromX)
-            boundingRect.setLeft(toX)
-            rect.setLeft(boundingRect.left() + offset)
-            self.setRect(rect)
-        elif self.handleSelected == self.middleRight:
-            fromX = self.mousePressRect.right()
-            toX = fromX + pos.x() - self.mousePressPos.x()
-            diff.setX(toX - fromX)
-            boundingRect.setRight(toX)
-            rect.setRight(boundingRect.right() - offset)
-            self.setRect(rect)
-        elif self.handleSelected == self.bottomLeft:
-            fromX = self.mousePressRect.left()
-            fromY = self.mousePressRect.bottom()
-            toX = fromX + pos.x() - self.mousePressPos.x()
-            toY = fromY + pos.y() - self.mousePressPos.y()
-            diff.setX(toX - fromX)
-            diff.setY(toY - fromY)
-            boundingRect.setLeft(toX)
-            boundingRect.setBottom(toY)
-            rect.setLeft(boundingRect.left() + offset)
-            rect.setBottom(boundingRect.bottom() - offset)
-            self.setRect(rect)
-        elif self.handleSelected == self.bottomMiddle:
-            fromY = self.mousePressRect.bottom()
-            toY = fromY + pos.y() - self.mousePressPos.y()
-            diff.setY(toY - fromY)
-            boundingRect.setBottom(toY)
-            rect.setBottom(boundingRect.bottom() - offset)
-            self.setRect(rect)
-        elif self.handleSelected == self.bottomRight:
-            fromX = self.mousePressRect.right()
-            fromY = self.mousePressRect.bottom()
-            toX = fromX + pos.x() - self.mousePressPos.x()
-            toY = fromY + pos.y() - self.mousePressPos.y()
-            diff.setX(toX - fromX)
-            diff.setY(toY - fromY)
-            boundingRect.setRight(toX)
-            boundingRect.setBottom(toY)
-            rect.setRight(boundingRect.right() - offset)
-            rect.setBottom(boundingRect.bottom() - offset)
-            self.setRect(rect)
-
-        self.handlePositioning()
-        
+      
 class SphereItem(SquareItem):
     """Sphere class that inherits from SquareItem but paints an ellipse to represent the sphere in Unreal Engine"""
     def __init__(self, x, y, width, height):
@@ -291,7 +238,7 @@ class GridGraphicsView(QGraphicsView):
         self.gridWidth = None
         self.gridHeight = None
         self.gridCreated = False
-        self.fitInView(self.scene.sceneRect(), Qt.KeepAspectRatio)
+        # self.fitInView(self.scene.sceneRect(), Qt.KeepAspectRatio)
         self.scene.setSceneRect(0, 0, 1200, 600)
         
     def createGrid(self, step=20, width=800, height=600):
@@ -320,7 +267,7 @@ class GridGraphicsView(QGraphicsView):
         self.gridHeight = height
         self.gridCreated = True
         
-    def addItem(self, shape='square', width=15, height=15, posX=None, posY=None):
+    def addItem(self, shape='square', width=15, height=15):
         """Adds an item to the to the GridGraphicsView
         
         Each item is represented by a 2D shape, and represents a 3D shape that it generates in the Unreal Engine scene
@@ -331,27 +278,14 @@ class GridGraphicsView(QGraphicsView):
             width (float): The width of the item's shape
             height (float): The height of the item's shape
         """
-        if not posX:
-            x = (self.gridWidth - width) / 2
-        else:
-            x = posX
-        if not posY:
-            y = (self.gridHeight - height) / 2
-        else:
-            y = posY
-            
-        print("x is {}".format(x))
-        print("y is {}".format(y))
         if self.gridCreated: # only add the item if the grid has been created
             if shape == 'circle':
-                asset = SphereItem(x, y, width, height)
+                asset = SphereItem(0, 0, width, height)
             else:
-                asset = SquareItem(x, y, width, height)
-            
-            # set the boundary for the item, so that the shape can not be dragged outside the grid
-            asset.setBoundary(QRectF(0, 0, self.gridWidth, self.gridHeight))
+                asset = SquareItem(0, 0, width, height)
             
             self.scene.addItem(asset)
+            self.scene.setSceneRect(0, 0, self.gridWidth, self.gridHeight)
             return asset
         else:
             # we don't necessarily need a grid to add an item, but if this were to happen then boundaries could not be set
