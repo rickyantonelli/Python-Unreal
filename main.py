@@ -1,7 +1,7 @@
 import unreal
 import sys
 from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout
-from PySide6.QtCore import QThread
+from PySide6.QtCore import QThread, Qt
 
 import graphicview   
 import unreallibrary
@@ -33,7 +33,7 @@ class GridWidget(QWidget):
         Args:
             itemShape (str): The shape that we want to pass in
         """
-        item = self.view.addItem(itemShape, 0, 0, 25, 25)
+        item = self.view.addItem(itemShape, 25, 25)
         unrealActor = self.UEL.spawnActor(itemShape, x=0, y=0)
         item.unrealAsset = unrealActor
 
@@ -44,7 +44,7 @@ app = None
 if not QApplication.instance():
     app = QApplication(sys.argv)
 gridWidget = GridWidget()
-gridWidget.view.createGrid(20, 1600, 600)
+gridWidget.view.createGrid(20, 1200, 600)
 gridWidget.show()
 
 # parent widget to unreal
