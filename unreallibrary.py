@@ -32,6 +32,7 @@ class UnrealLibrary():
         actorRotation = unreal.Rotator(0, 0, 0)
         
         spawnedActor = self.ELL.spawn_actor_from_object(actorClass, actorLocation, actorRotation)
+        spawnedActor.set_actor_scale3d(unreal.Vector(0.25, 0.25, 0.25))
         
         return spawnedActor
         

@@ -1,5 +1,7 @@
 import unreal
 import sys
+import unreal_stylesheet
+
 from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout
 from PySide6.QtCore import QThread, Qt
 
@@ -43,6 +45,11 @@ class GridWidget(QWidget):
 app = None
 if not QApplication.instance():
     app = QApplication(sys.argv)
+
+# applies a qt stylesheet to make widgets look native to Unreal
+# https://github.com/leixingyu/unrealStylesheet
+unreal_stylesheet.setup()
+
 gridWidget = GridWidget()
 gridWidget.view.createGrid(20, 1200, 600)
 gridWidget.show()

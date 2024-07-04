@@ -151,7 +151,6 @@ class SquareItem(QGraphicsRectItem):
         viewRight = sceneRect.right()
         viewBottom = sceneRect.bottom()
 
-        # Next, check if the rectangle has been dragged out of bounds.
         if rect.top() < viewTop:
             if self.selectedEdge is None:
                 rect.translate(0, viewTop-rect.top())
@@ -173,7 +172,6 @@ class SquareItem(QGraphicsRectItem):
             else:
                 rect.setRight(viewRight)
 
-        # Also check if the rectangle has been dragged inside out.
         if rect.width() < 5:
             if self.selectedEdge == 'left':
                 rect.setLeft(rect.right() - 5)
@@ -185,7 +183,6 @@ class SquareItem(QGraphicsRectItem):
             else:
                 rect.setBottom(rect.top() + 5)
 
-        # Finally, update the rect that is now guaranteed to stay in bounds.
         self.setRect(rect)
         self.handlePositioning()
         
@@ -294,6 +291,8 @@ class GridGraphicsView(QGraphicsView):
             width (float): The width of the item's shape
             height (float): The height of the item's shape
         """
+        print("width is {}".format(width))
+        print("height is {}".format(height))
         if self.gridCreated: # only add the item if the grid has been created
             if shape == 'circle':
                 asset = SphereItem(0, 0, width, height)
@@ -302,6 +301,8 @@ class GridGraphicsView(QGraphicsView):
             
             self.scene.addItem(asset)
             self.scene.setSceneRect(0, 0, self.gridWidth, self.gridHeight)
+            
+            #TODO: Allow for passing in of x and y coordinates, which will then translate the rect to those coordinates after creation
             return asset
         else:
             # we don't necessarily need a grid to add an item, but if this were to happen then boundaries could not be set
