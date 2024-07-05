@@ -36,7 +36,9 @@ class GridWidget(QWidget):
             itemShape (str): The shape that we want to pass in
         """
         item = self.view.addItem(itemShape, 25, 25)
-        unrealActor = self.UEL.spawnActor(itemShape, x=0, y=0)
+        # set x and y to 12.5 since we are now using the center of the QRectF
+        # and our grid starts at (0,0) in the top left
+        unrealActor = self.UEL.spawnActor(itemShape, x=12.5, y=12.5)
         item.unrealAsset = unrealActor
 
 

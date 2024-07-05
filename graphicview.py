@@ -122,10 +122,11 @@ class SquareItem(QGraphicsRectItem):
         xDiff = pos.x() - self.clickPos.x()
         yDiff = pos.y() - self.clickPos.y()
 
-        # Start with the rectangle as it was when clicked.
+        # get the rectangle as it was when clicked
         rect = QRectF(self.clickRect)
 
-        # Then adjust by the distance the mouse moved.
+        # if the mouse is not on an edge, then we move the object (translate)
+        # if it is on an edge, then we resize (adjust)
         if self.selectedEdge is None:
             rect.translate(xDiff, yDiff)
         elif self.selectedEdge == 'top':
@@ -145,12 +146,16 @@ class SquareItem(QGraphicsRectItem):
         elif self.selectedEdge == 'bottomright':
             rect.adjust(0, 0, xDiff, yDiff)
 
+        # this section ensures that we do not drag the rect outside of our boundaries
+        # we have set the sceneRect() to be that of the grid boundary
         sceneRect = self.scene().sceneRect()
         viewLeft = sceneRect.left()
         viewTop = sceneRect.top()
         viewRight = sceneRect.right()
         viewBottom = sceneRect.bottom()
 
+        # if we reach an edge, then update the translation to be clamped at the edge that we hit
+        # this is much smoother than just not moving when you hit an edge, as movement can still be done on the valid axis
         if rect.top() < viewTop:
             if self.selectedEdge is None:
                 rect.translate(0, viewTop-rect.top())
@@ -172,6 +177,8 @@ class SquareItem(QGraphicsRectItem):
             else:
                 rect.setRight(viewRight)
 
+        # lastly, make sure that we aren't resizing into a negative amount
+        # without this we could drag all the way backwards into itself
         if rect.width() < 5:
             if self.selectedEdge == 'left':
                 rect.setLeft(rect.right() - 5)
@@ -183,6 +190,7 @@ class SquareItem(QGraphicsRectItem):
             else:
                 rect.setBottom(rect.top() + 5)
 
+        # set the rect with our updates, recalculate positioning for cursors with new rect shape
         self.setRect(rect)
         self.handlePositioning()
         
@@ -197,22 +205,29 @@ class SquareItem(QGraphicsRectItem):
         # apply the change to the item to its Unreal engine counterpart
         rect = QRectF(self.rect())
         
-        print("new position is {},{}".format(rect.x(), rect.y()))
-        newLocation = unreal.Vector(rect.x(), rect.y(), 0)
+        # take the center() of the rect as the point
+        # if we do not take the center(), then resizing will not change position in Unreal in the way we'd like
+        print("new position is {},{}".format(rect.center().x(), rect.center().y()))
+        newLocation = unreal.Vector(rect.center().x(), rect.center().y(), 0)
         
         if self.unrealAsset:
+            # reflect the position change in unreal engine
+            # no need to sweep or teleport, since we are just placing actors
+            self.unrealAsset.set_actor_location(newLocation, False, False)
+            
+            # on resizing, reflect the scale update in Unreal 
             oldActorScale = self.unrealAsset.get_actor_scale3d()
             xFactor = rect.width() / self.clickRect.width()
             yFactor = rect.height() / self.clickRect.height()
+            # lets expose the zFactor because in the future we'll like to allow for this to be changeable
             zFactor = 1
             
             newXScale = oldActorScale.x * xFactor
             newYScale = oldActorScale.y * yFactor
             newZScale = oldActorScale.z * zFactor
-            self.unrealAsset.set_actor_scale3d(unreal.Vector(newXScale, newYScale, newZScale))
-            
-            # no need to sweep or teleport, since we are just placing actors
-            self.unrealAsset.set_actor_location(newLocation, False, False)
+            if newXScale != 1 or newYScale != 1 or newZScale != 1:
+                # only apply updates to unreal if we need to (there is a scale change)
+                self.unrealAsset.set_actor_scale3d(unreal.Vector(newXScale, newYScale, newZScale))
     
         self.update()
                 
