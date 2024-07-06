@@ -1,9 +1,9 @@
 import unreal
 
 class UnrealLibrary():
-    """A class that gives access to the necessary libraries from the Unreal Engine Python API"""
+    """Class that reflects changes into Unreal Engine and gives access to the necessary libraries from the Unreal Engine Python API"""
     def __init__(self):
-        """ Init's UnrealLibrary"""
+        """ Init's UnrealLibrary and initializes the necessary libraries"""
         super().__init__()
         
         self.EAL = unreal.EditorAssetLibrary

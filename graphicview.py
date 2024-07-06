@@ -1,8 +1,10 @@
 import unreal
-import unreallibrary
+
 from PySide6.QtCore import Qt, QPointF, QRectF, QPoint
 from PySide6.QtGui import QPen, QBrush, QColor, QPainter, QPolygonF, QCursor, QAction
 from PySide6.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsItem, QGraphicsRectItem, QMenu
+
+from unreallibrary import UnrealLibrary
 
 class SquareItem(QGraphicsRectItem):
     """The parent class for draggable items and also the base class for squares/cubes, which handles mouse events and updating the Unreal assets"""
@@ -41,15 +43,16 @@ class SquareItem(QGraphicsRectItem):
         self.setAcceptHoverEvents(True)
         self.setBrush(QBrush(Qt.GlobalColor.blue))
         self.setPen(QPen(Qt.GlobalColor.black))
-        self.setPos(x, y)
         
         self.offset = QPointF(0, 0)
-        self.UEL = unreallibrary.UnrealLibrary()
+        self.UEL = UnrealLibrary()
         
         self.handles = {}
         
-        self.unrealAsset = None
-        self.position = None
+        # set x and y to 12.5 since we are now using the center of the QRectF
+        # and our grid starts at (0,0) in the top left
+        self.unrealAsset = self.UEL.spawnActor('square', x=12.5, y=12.5)
+        
         self.width = width
         self.height = height
         
@@ -57,6 +60,12 @@ class SquareItem(QGraphicsRectItem):
         self.clickPos = self.clickRect = None
         
         self.handlePositioning()
+        self.setRectPos(x, y)
+        
+    def setRectPos(self, x, y):
+        rect = QRectF(self.rect())
+        rect.translate(x, y)
+        self.setRect(rect)
         
     def handleAt(self, point):
         """Checks the given point to see whether it lands in any of the QRectFs for resizing, returns none if not
@@ -71,15 +80,6 @@ class SquareItem(QGraphicsRectItem):
             if v.contains(point):
                 return k
         return None    
-    
-    # def boundingRect(self):
-    #     """Takes the bounding rect and returns it with the extra margins and space in mind
-        
-    #     Returns:
-    #         The adjusted rect
-    #     """
-    #     o = self.resizeMargin + self.resizeSpace
-    #     return self.rect().adjusted(-o, -o, o, o)
     
     def handlePositioning(self):
         """Sets the QRectFs that are needed to provide the proper cursor and set up resizing"""
@@ -242,6 +242,11 @@ class SquareItem(QGraphicsRectItem):
         super().hoverLeaveEvent(event)
         
     def displayContextMenu(self, event):
+        """Generates a QMenu and adds actions to it
+        
+        Args:
+            event (QMouseEvent): The qt event
+        """
         contextMenu = QMenu()
         deleteAction = QAction("Delete Item", contextMenu)
         deleteAction.triggered.connect(self.deleteItem)
@@ -249,7 +254,9 @@ class SquareItem(QGraphicsRectItem):
         contextMenu.exec(event.screenPos())
         
     def deleteItem(self):
-        self.UEL.ELL.destroy_actor(self.unrealAsset)
+        """Removes this item from the GridGraphicsView and deletes its Unreal counterpart"""
+        if self.unrealAsset:
+            self.UEL.ELL.destroy_actor(self.unrealAsset)
         if self.scene():
             self.scene().removeItem(self)
       
@@ -258,6 +265,7 @@ class SphereItem(SquareItem):
     def __init__(self, x, y, width, height):
         """Init's SphereItem"""
         super().__init__(x, y, width, height)
+        self.unrealAsset = self.UEL.spawnActor('circle', x=12.5, y=12.5)
         
     def paint(self, painter, option, widget):
         """Sets the brush and pen for the sphere, and draws an ellipse to represent a sphere"""
@@ -276,7 +284,7 @@ class GridGraphicsView(QGraphicsView):
         self.gridWidth = None
         self.gridHeight = None
         self.gridCreated = False
-        # self.fitInView(self.scene.sceneRect(), Qt.KeepAspectRatio)
+        self.fitInView(self.scene.sceneRect(), Qt.KeepAspectRatio)
         self.scene.setSceneRect(0, 0, 1200, 600)
         
     def createGrid(self, step=20, width=800, height=600):
@@ -305,6 +313,8 @@ class GridGraphicsView(QGraphicsView):
         self.gridHeight = height
         self.gridCreated = True
         
+        self.scene.setSceneRect(0, 0, self.gridWidth, self.gridHeight)
+        
     def addItem(self, shape='square', width=15, height=15):
         """Adds an item to the to the GridGraphicsView
         
@@ -325,12 +335,11 @@ class GridGraphicsView(QGraphicsView):
                 asset = SquareItem(0, 0, width, height)
             
             self.scene.addItem(asset)
-            self.scene.setSceneRect(0, 0, self.gridWidth, self.gridHeight)
-            
-            #TODO: Allow for passing in of x and y coordinates, which will then translate the rect to those coordinates after creation
+    
             return asset
         else:
             # we don't necessarily need a grid to add an item, but if this were to happen then boundaries could not be set
+            # so we'll just print rather than raising an exception
             print("Must create a grid before adding assets")
             return
         

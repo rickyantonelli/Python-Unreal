@@ -5,26 +5,35 @@ import unreal_stylesheet
 from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout
 from PySide6.QtCore import QThread, Qt
 
-import graphicview   
-import unreallibrary
+from actorinfowidget import InfoWidget
+from graphicview import GridGraphicsView
+from unreallibrary import UnrealLibrary
         
 class GridWidget(QWidget):
     """A QWidget to display a 2D grid that reflects items into the 3D space of the current Unreal Engine map"""
     def __init__(self):
         super().__init__()
-        self.view = graphicview.GridGraphicsView()
-        self.UEL = unreallibrary.UnrealLibrary()
+        self.view = GridGraphicsView()
+        self.UEL = UnrealLibrary()
         
         self.addCubeButton = QPushButton("Add Cube")
         self.addSphereButton = QPushButton("Add Sphere")
+        self.infoWidget = InfoWidget()
+        self.infoWidget.gridView = self.view
+        self.view.scene.selectionChanged.connect(self.infoWidget.updateInfo)
         
-        self.vertLayout = QVBoxLayout(self)
+        self.mainLayout = QHBoxLayout(self)
+        
+        self.vertLayout = QVBoxLayout()
         self.buttonLayout = QHBoxLayout()
         self.vertLayout.addWidget(self.view)
         self.buttonLayout.addWidget(self.addCubeButton)
         self.buttonLayout.addWidget(self.addSphereButton)
         self.vertLayout.addLayout(self.buttonLayout)
-        self.setLayout(self.vertLayout)
+        self.mainLayout.addLayout(self.vertLayout)
+        self.mainLayout.addWidget(self.infoWidget)
+        
+        self.setLayout(self.mainLayout)
         
         self.addCubeButton.pressed.connect(lambda x = 'square': self.addItem(x))
         self.addSphereButton.pressed.connect(lambda x = 'circle':self.addItem(x))
@@ -35,11 +44,9 @@ class GridWidget(QWidget):
         Args:
             itemShape (str): The shape that we want to pass in
         """
-        item = self.view.addItem(itemShape, 25, 25)
-        # set x and y to 12.5 since we are now using the center of the QRectF
-        # and our grid starts at (0,0) in the top left
-        unrealActor = self.UEL.spawnActor(itemShape, x=12.5, y=12.5)
-        item.unrealAsset = unrealActor
+        self.view.addItem(itemShape, 25, 25)
+        # unrealActor = self.UEL.spawnActor(itemShape, x=12.5, y=12.5)
+        # item.unrealAsset = unrealActor
 
 
 # TODO: Normally we would use if __name__ == '__main__':
