@@ -1,8 +1,8 @@
 import unreal
 import unreallibrary
 from PySide6.QtCore import Qt, QPointF, QRectF, QPoint
-from PySide6.QtGui import QPen, QBrush, QColor, QPainter, QPolygonF, QCursor
-from PySide6.QtWidgets import QApplication, QGraphicsView, QGraphicsScene, QGraphicsItem, QGraphicsEllipseItem, QMainWindow, QGraphicsRectItem, QGraphicsPolygonItem
+from PySide6.QtGui import QPen, QBrush, QColor, QPainter, QPolygonF, QCursor, QAction
+from PySide6.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsItem, QGraphicsRectItem, QMenu
 
 class SquareItem(QGraphicsRectItem):
     """The parent class for draggable items and also the base class for squares/cubes, which handles mouse events and updating the Unreal assets"""
@@ -101,15 +101,13 @@ class SquareItem(QGraphicsRectItem):
         
         Args:
             event (QMouseEvent): The qt event
-        """
-        
-        self.clickPos = event.pos()
-        rect = self.rect()        
-        self.selectedEdge = self.handleAt(event.pos())
-        
-        print(self.selectedEdge)
-        self.clickPos = event.pos()
-        self.clickRect = rect
+        """      
+        if event.button() == Qt.MouseButton.RightButton:
+            self.displayContextMenu(event)
+        else:
+            self.selectedEdge = self.handleAt(event.pos())
+            self.clickPos = event.pos()
+            self.clickRect = self.rect()
         super().mousePressEvent(event)
         
     def mouseMoveEvent(self, event):
@@ -242,6 +240,18 @@ class SquareItem(QGraphicsRectItem):
         """Resets the cursor type back to the ArrowCursor and applies the hoverLeaveEvent"""
         self.setCursor(Qt.ArrowCursor)
         super().hoverLeaveEvent(event)
+        
+    def displayContextMenu(self, event):
+        contextMenu = QMenu()
+        deleteAction = QAction("Delete Item", contextMenu)
+        deleteAction.triggered.connect(self.deleteItem)
+        contextMenu.addAction(deleteAction)
+        contextMenu.exec(event.screenPos())
+        
+    def deleteItem(self):
+        self.UEL.ELL.destroy_actor(self.unrealAsset)
+        if self.scene():
+            self.scene().removeItem(self)
       
 class SphereItem(SquareItem):
     """Sphere class that inherits from SquareItem but paints an ellipse to represent the sphere in Unreal Engine"""
