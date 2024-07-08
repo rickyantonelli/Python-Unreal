@@ -249,6 +249,7 @@ class SquareItem(QGraphicsRectItem):
         self.setCursor(Qt.ArrowCursor)
         super().hoverLeaveEvent(event)
         
+    #TODO: We should move context menu stuff to the view
     def displayContextMenu(self, event):
         """Generates a QMenu and adds actions to it
         
@@ -355,7 +356,16 @@ class GridGraphicsView(QGraphicsView):
             return
         
     def keyPressEvent(self, event):
-        # quick spawn
+        """ Handles key press hot keys and also calls the parent keyPressEvent()
+        
+        Hotkeys:
+            Quick spawning (F): Creates a cube item at the given mouse location
+            Copy Items (ctrl+c): Copies the selected items and stores them in self.copiedItems
+            Paste Items (ctrl+v): Pastes the selected items at the cursors location
+                - NOTE: Pasting multiple items will put them all at the cursor location
+                    In the future we can make the pasting be an offset, so that we keep the shape of the multi-copy
+        """
+        # quick spawn items (cubes for now, allow to be set by the user later)
         if self.canSpawnItemOnPress and event.key() == Qt.Key_F:
             cursorPos = self.mapToScene(self.mapFromGlobal(QCursor.pos()))
             self.addItem('square', 25, 25, cursorPos.x(), cursorPos.y())
@@ -372,12 +382,19 @@ class GridGraphicsView(QGraphicsView):
         super().keyPressEvent(event)
         
     def keyReleaseEvent(self, event):
+        """ Handles key releasing so that quick spawn cant be held down + calls keyReleaseEvent()"""
         if event.key() == Qt.Key_F:
             self.canSpawnItemOnPress = True
             print("release")
         super().keyReleaseEvent(event)
         
     def pasteItems(self, items):
+        """ Pastes the items into the gridview at the mouse cursor's position
+        
+        Args:
+            items (list): List of items to paste into the view
+            
+        """
         if not items:
             return
         
