@@ -33,7 +33,7 @@ class SquareItem(QGraphicsRectItem):
         bottomRight: Qt.SizeFDiagCursor,
     }
     
-    def __init__(self, x, y, width, height):
+    def __init__(self, x, y, width, height, unrealAsset=None):
         """Init's the SquareItem, sets necessary flags and properties"""
         QGraphicsRectItem.__init__(self, QRectF(0, 0, width, height))
         self.setFlag(QGraphicsItem.ItemIsMovable, True)
@@ -49,18 +49,23 @@ class SquareItem(QGraphicsRectItem):
         
         self.handles = {}
         
-        # set x and y to 12.5 since we are now using the center of the QRectF
-        # and our grid starts at (0,0) in the top left
-        self.unrealAsset = self.UEL.spawnActor('square', x=12.5, y=12.5)
-        
         self.width = width
         self.height = height
         
         self.selectedEdge = None
         self.clickPos = self.clickRect = None
-        
-        self.handlePositioning()
         self.setRectPos(x, y)
+        self.handlePositioning()
+        
+        if unrealAsset:
+            # if an asset is passed in, that means we are copying
+            self.unrealAsset = self.UEL.copyActor(unrealAsset)
+            self.unrealAsset.set_actor_location(unreal.Vector(x+(width/2), y+(height/2), 0), False, False)
+        else:
+            # set x and y to 12.5 since we are now using the center of the QRectF
+            # and our grid starts at (0,0) in the top left
+            # TODO: should just be the center of the rect not +12.5
+            self.unrealAsset = self.UEL.spawnActor('square', x+(width/2), y+(height/2))
         
     def setRectPos(self, x, y):
         rect = QRectF(self.rect())
@@ -208,6 +213,9 @@ class SquareItem(QGraphicsRectItem):
         print("new position is {},{}".format(rect.center().x(), rect.center().y()))
         newLocation = unreal.Vector(rect.center().x(), rect.center().y(), 0)
         
+        self.width = rect.width()
+        self.height = rect.height()
+        
         if self.unrealAsset:
             # reflect the position change in unreal engine
             # no need to sweep or teleport, since we are just placing actors
@@ -262,9 +270,9 @@ class SquareItem(QGraphicsRectItem):
       
 class SphereItem(SquareItem):
     """Sphere class that inherits from SquareItem but paints an ellipse to represent the sphere in Unreal Engine"""
-    def __init__(self, x, y, width, height):
+    def __init__(self, x, y, width, height, unrealAsset=None):
         """Init's SphereItem"""
-        super().__init__(x, y, width, height)
+        super().__init__(x, y, width, height, unrealAsset)
         self.unrealAsset = self.UEL.spawnActor('circle', x=12.5, y=12.5)
         
     def paint(self, painter, option, widget):
@@ -286,6 +294,9 @@ class GridGraphicsView(QGraphicsView):
         self.gridCreated = False
         self.fitInView(self.scene.sceneRect(), Qt.KeepAspectRatio)
         self.scene.setSceneRect(0, 0, 1200, 600)
+        
+        self.canSpawnItemOnPress = True
+        self.copiedItems = None
         
     def createGrid(self, step=20, width=800, height=600):
         """Creates the grid in the graphics view and adds grid lines
@@ -315,7 +326,7 @@ class GridGraphicsView(QGraphicsView):
         
         self.scene.setSceneRect(0, 0, self.gridWidth, self.gridHeight)
         
-    def addItem(self, shape='square', width=15, height=15):
+    def addItem(self, shape='square', width=15, height=15, x=0, y=0):
         """Adds an item to the to the GridGraphicsView
         
         Each item is represented by a 2D shape, and represents a 3D shape that it generates in the Unreal Engine scene
@@ -330,9 +341,9 @@ class GridGraphicsView(QGraphicsView):
         print("height is {}".format(height))
         if self.gridCreated: # only add the item if the grid has been created
             if shape == 'circle':
-                asset = SphereItem(0, 0, width, height)
+                asset = SphereItem(x, y, width, height)
             else:
-                asset = SquareItem(0, 0, width, height)
+                asset = SquareItem(x, y, width, height)
             
             self.scene.addItem(asset)
     
@@ -343,3 +354,42 @@ class GridGraphicsView(QGraphicsView):
             print("Must create a grid before adding assets")
             return
         
+    def keyPressEvent(self, event):
+        # quick spawn
+        if self.canSpawnItemOnPress and event.key() == Qt.Key_F:
+            cursorPos = self.mapToScene(self.mapFromGlobal(QCursor.pos()))
+            self.addItem('square', 25, 25, cursorPos.x(), cursorPos.y())
+            self.canSpawnItemOnPress = False
+            
+        # copy selected items
+        if event.key() == Qt.Key_C and event.modifiers() == Qt.ControlModifier:
+            if self.scene.selectedItems():
+                self.copiedItems = self.scene.selectedItems()
+        
+        # paste selected items
+        if event.key() == Qt.Key_V and event.modifiers() == Qt.ControlModifier:
+            self.pasteItems(self.copiedItems)
+        super().keyPressEvent(event)
+        
+    def keyReleaseEvent(self, event):
+        if event.key() == Qt.Key_F:
+            self.canSpawnItemOnPress = True
+            print("release")
+        super().keyReleaseEvent(event)
+        
+    def pasteItems(self, items):
+        if not items:
+            return
+        
+        for item in items:
+            width = item.width
+            height = item.height
+            cursorPos = self.mapToScene(self.mapFromGlobal(QCursor.pos()))
+            unrealAsset = item.unrealAsset
+            if isinstance(item, SphereItem):
+                asset = SphereItem(cursorPos.x(), cursorPos.y(), width, height, unrealAsset)
+                self.scene.addItem(asset)
+            else:
+                asset = SquareItem(cursorPos.x(), cursorPos.y(), width, height, unrealAsset)
+                self.scene.addItem(asset)
+                
