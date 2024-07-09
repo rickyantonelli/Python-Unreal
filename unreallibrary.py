@@ -10,7 +10,7 @@ class UnrealLibrary():
         self.ELL = unreal.EditorLevelLibrary
         self.EAS = unreal.EditorActorSubsystem
          
-    def spawnActor(self, shape='square', x=0, y=0):
+    def spawnActor(self, shape='square', x=0, y=0, label=None):
         """Spawns an actor in Unreal Engine that is tied to an item in the 2D grid
         
         Args:
@@ -34,10 +34,12 @@ class UnrealLibrary():
         
         spawnedActor = self.ELL.spawn_actor_from_object(actorClass, actorLocation, actorRotation)
         spawnedActor.set_actor_scale3d(unreal.Vector(0.25, 0.25, 0.25))
+        if label:
+            spawnedActor.set_actor_label(label)
         
         return spawnedActor
     
-    def copyActor(self, unrealAsset=None):
+    def copyActor(self, unrealAsset=None, label=None):
         """Copies an Unreal actor and returns the duplicated actor
         
         Args:
@@ -50,6 +52,8 @@ class UnrealLibrary():
             return
         
         duplicatedActor = self.EAS.duplicate_actor(unreal.EditorActorSubsystem(), unrealAsset)
+        if label:
+            duplicatedActor.set_actor_label(label)
         
         return duplicatedActor
     

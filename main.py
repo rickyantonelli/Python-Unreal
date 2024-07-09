@@ -34,6 +34,8 @@ class GridWidget(QWidget):
         self.mainLayout.addWidget(self.infoWidget)
         
         self.setLayout(self.mainLayout)
+        self.mainLayout.setStretch(0, 4)
+        self.mainLayout.setStretch(1, 1)
         
         self.addCubeButton.pressed.connect(lambda x = 'square': self.addItem(x))
         self.addSphereButton.pressed.connect(lambda x = 'circle':self.addItem(x))

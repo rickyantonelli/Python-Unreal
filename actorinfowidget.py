@@ -7,8 +7,10 @@ from PySide6.QtWidgets import QWidget, QLabel, QVBoxLayout, QHBoxLayout, QLineEd
 class InfoWidget(QWidget):
     def __init__(self):
         super().__init__()
-        self.nameLabel = QLineEdit()
-        self.thumbnailLabel = QLabel()
+        self.nameLabel = QLabel("Name:")
+        self.nameLineEdit = QLineEdit()
+        self.nameLineEdit.setReadOnly(True)
+
         
         self.gridView = None
         
@@ -22,15 +24,21 @@ class InfoWidget(QWidget):
         self.zSliderValue.setFixedWidth(50)
         self.zSliderValue.setAlignment(Qt.AlignCenter)
         self.zSliderValue.returnPressed.connect(self.zSliderValueUpdate)
-        
         validator = QIntValidator(self.zScaleSlider.minimum(), self.zScaleSlider.maximum())
         self.zSliderValue.setValidator(validator)
         
+        self.nameLayout = QHBoxLayout()
+        self.nameLayout.addWidget(self.nameLabel)
+        self.nameLayout.addWidget(self.nameLineEdit)
+        
         self.vertLayout = QVBoxLayout(self)
-        self.vertLayout.addWidget(self.nameLabel)
+        self.vertLayout.addLayout(self.nameLayout)
+        # self.vertLayout.addSpacerItem()
         
         
         self.sliderLayout = QHBoxLayout()
+        self.sliderLabel = QLabel("Z-Scale:")
+        self.sliderLayout.addWidget(self.sliderLabel)
         self.sliderLayout.addWidget(self.zScaleSlider)
         self.sliderLayout.addWidget(self.zSliderValue)
         
@@ -53,7 +61,7 @@ class InfoWidget(QWidget):
             selectedItem = self.gridView.scene.selectedItems()[0]
             selectedName = selectedItem.unrealAsset.get_actor_label()
             self.zScaleSlider.setValue(selectedItem.unrealAsset.get_actor_scale3d().z*100)
-            self.nameLabel.setText(selectedName)
+            self.nameLineEdit.setText(selectedName)
         
     # TODO: Widget that displays info on the selected item
     # Name (changeable) and that's it for now
@@ -94,7 +102,7 @@ class ZSlider(QSlider):
                 QSlider::handle:hover {
                 background: #575757; }
                 QSlider::handle:horizontal {
-                width: 20px; }
+                width: 15px; }
                 QSlider::handle:vertical {
                 height: 30px; }
         """)

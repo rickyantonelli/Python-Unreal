@@ -33,7 +33,7 @@ class SquareItem(QGraphicsRectItem):
         bottomRight: Qt.SizeFDiagCursor,
     }
     
-    def __init__(self, x, y, width, height, unrealAsset=None):
+    def __init__(self, x, y, width, height, unrealAsset=None, label=None):
         """Init's the SquareItem, sets necessary flags and properties"""
         QGraphicsRectItem.__init__(self, QRectF(0, 0, width, height))
         self.setFlag(QGraphicsItem.ItemIsMovable, True)
@@ -57,15 +57,19 @@ class SquareItem(QGraphicsRectItem):
         self.setRectPos(x, y)
         self.handlePositioning()
         
-        if unrealAsset:
-            # if an asset is passed in, that means we are copying
-            self.unrealAsset = self.UEL.copyActor(unrealAsset)
-            self.unrealAsset.set_actor_location(unreal.Vector(x+(width/2), y+(height/2), 0), False, False)
-        else:
-            # set x and y to 12.5 since we are now using the center of the QRectF
-            # and our grid starts at (0,0) in the top left
-            # TODO: should just be the center of the rect not +12.5
-            self.unrealAsset = self.UEL.spawnActor('square', x+(width/2), y+(height/2))
+        self.actorLabel = label
+        
+        # sphere item 
+        if not isinstance(self, SphereItem):
+            if unrealAsset:
+                # if an asset is passed in, that means we are copying
+                self.unrealAsset = self.UEL.copyActor(unrealAsset, self.actorLabel)
+                self.unrealAsset.set_actor_location(unreal.Vector(x+(width/2), y+(height/2), 0), False, False)
+            else:
+                # set x and y to 12.5 since we are now using the center of the QRectF
+                # and our grid starts at (0,0) in the top left
+                # TODO: should just be the center of the rect not +12.5
+                self.unrealAsset = self.UEL.spawnActor('square', x+(width/2), y+(height/2), self.actorLabel)
         
     def setRectPos(self, x, y):
         rect = QRectF(self.rect())
@@ -271,10 +275,18 @@ class SquareItem(QGraphicsRectItem):
       
 class SphereItem(SquareItem):
     """Sphere class that inherits from SquareItem but paints an ellipse to represent the sphere in Unreal Engine"""
-    def __init__(self, x, y, width, height, unrealAsset=None):
+    def __init__(self, x, y, width, height, unrealAsset=None, label=None):
         """Init's SphereItem"""
-        super().__init__(x, y, width, height, unrealAsset)
-        self.unrealAsset = self.UEL.spawnActor('circle', x=12.5, y=12.5)
+        super().__init__(x, y, width, height, unrealAsset, label)
+        if unrealAsset:
+                # if an asset is passed in, that means we are copying
+                self.unrealAsset = self.UEL.copyActor(unrealAsset, self.actorLabel)
+                self.unrealAsset.set_actor_location(unreal.Vector(x+(width/2), y+(height/2), 0), False, False)
+        else:
+            # set x and y to 12.5 since we are now using the center of the QRectF
+            # and our grid starts at (0,0) in the top left
+            # TODO: should just be the center of the rect not +12.5
+            self.unrealAsset = self.UEL.spawnActor('circle', x+(width/2), y+(height/2), self.actorLabel)
         
     def paint(self, painter, option, widget):
         """Sets the brush and pen for the sphere, and draws an ellipse to represent a sphere"""
@@ -298,6 +310,7 @@ class GridGraphicsView(QGraphicsView):
         
         self.canSpawnItemOnPress = True
         self.copiedItems = None
+        self.numItems = 0
         
     def createGrid(self, step=20, width=800, height=600):
         """Creates the grid in the graphics view and adds grid lines
@@ -340,13 +353,15 @@ class GridGraphicsView(QGraphicsView):
         """
         print("width is {}".format(width))
         print("height is {}".format(height))
+        label = "BlockoutActor{}".format(self.numItems) if self.numItems > 0 else "BlockoutActor"
         if self.gridCreated: # only add the item if the grid has been created
             if shape == 'circle':
-                asset = SphereItem(x, y, width, height)
+                asset = SphereItem(x, y, width, height, None, label)
             else:
-                asset = SquareItem(x, y, width, height)
+                asset = SquareItem(x, y, width, height, None, label)
             
             self.scene.addItem(asset)
+            self.numItems += 1
     
             return asset
         else:
