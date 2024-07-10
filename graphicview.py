@@ -33,7 +33,7 @@ class SquareItem(QGraphicsRectItem):
         bottomRight: Qt.SizeFDiagCursor,
     }
     
-    def __init__(self, x, y, width, height, unrealAsset=None, label=None):
+    def __init__(self, x, y, width, height, unrealActor=None, label=None):
         """Init's the SquareItem, sets necessary flags and properties"""
         QGraphicsRectItem.__init__(self, QRectF(0, 0, width, height))
         self.setFlag(QGraphicsItem.ItemIsMovable, True)
@@ -61,15 +61,15 @@ class SquareItem(QGraphicsRectItem):
         
         # sphere item 
         if not isinstance(self, SphereItem):
-            if unrealAsset:
+            if unrealActor:
                 # if an asset is passed in, that means we are copying
-                self.unrealAsset = self.UEL.copyActor(unrealAsset, self.actorLabel)
-                self.unrealAsset.set_actor_location(unreal.Vector(x+(width/2), y+(height/2), 0), False, False)
+                self.unrealActor = self.UEL.copyActor(unrealActor, self.actorLabel)
+                self.unrealActor.set_actor_location(unreal.Vector(x+(width/2), y+(height/2), 0), False, False)
             else:
                 # set x and y to 12.5 since we are now using the center of the QRectF
                 # and our grid starts at (0,0) in the top left
                 # TODO: should just be the center of the rect not +12.5
-                self.unrealAsset = self.UEL.spawnActor('square', x+(width/2), y+(height/2), self.actorLabel)
+                self.unrealActor = self.UEL.spawnActor('square', x+(width/2), y+(height/2), self.actorLabel)
         
     def setRectPos(self, x, y):
         rect = QRectF(self.rect())
@@ -220,13 +220,13 @@ class SquareItem(QGraphicsRectItem):
         self.width = rect.width()
         self.height = rect.height()
         
-        if self.unrealAsset:
+        if self.unrealActor:
             # reflect the position change in unreal engine
             # no need to sweep or teleport, since we are just placing actors
-            self.unrealAsset.set_actor_location(newLocation, False, False)
+            self.unrealActor.set_actor_location(newLocation, False, False)
             
             # on resizing, reflect the scale update in Unreal 
-            oldActorScale = self.unrealAsset.get_actor_scale3d()
+            oldActorScale = self.unrealActor.get_actor_scale3d()
             xFactor = rect.width() / self.clickRect.width()
             yFactor = rect.height() / self.clickRect.height()
             # lets expose the zFactor because in the future we'll like to allow for this to be changeable
@@ -237,7 +237,7 @@ class SquareItem(QGraphicsRectItem):
             newZScale = oldActorScale.z * zFactor
             if newXScale != 1 or newYScale != 1 or newZScale != 1:
                 # only apply updates to unreal if we need to (there is a scale change)
-                self.unrealAsset.set_actor_scale3d(unreal.Vector(newXScale, newYScale, newZScale))
+                self.unrealActor.set_actor_scale3d(unreal.Vector(newXScale, newYScale, newZScale))
     
         self.update()
                 
@@ -268,25 +268,25 @@ class SquareItem(QGraphicsRectItem):
         
     def deleteItem(self):
         """Removes this item from the GridGraphicsView and deletes its Unreal counterpart"""
-        if self.unrealAsset:
-            self.UEL.ELL.destroy_actor(self.unrealAsset)
+        if self.unrealActor:
+            self.UEL.ELL.destroy_actor(self.unrealActor)
         if self.scene():
             self.scene().removeItem(self)
       
 class SphereItem(SquareItem):
     """Sphere class that inherits from SquareItem but paints an ellipse to represent the sphere in Unreal Engine"""
-    def __init__(self, x, y, width, height, unrealAsset=None, label=None):
+    def __init__(self, x, y, width, height, unrealActor=None, label=None):
         """Init's SphereItem"""
-        super().__init__(x, y, width, height, unrealAsset, label)
-        if unrealAsset:
+        super().__init__(x, y, width, height, unrealActor, label)
+        if unrealActor:
                 # if an asset is passed in, that means we are copying
-                self.unrealAsset = self.UEL.copyActor(unrealAsset, self.actorLabel)
-                self.unrealAsset.set_actor_location(unreal.Vector(x+(width/2), y+(height/2), 0), False, False)
+                self.unrealActor = self.UEL.copyActor(unrealActor, self.actorLabel)
+                self.unrealActor.set_actor_location(unreal.Vector(x+(width/2), y+(height/2), 0), False, False)
         else:
             # set x and y to 12.5 since we are now using the center of the QRectF
             # and our grid starts at (0,0) in the top left
             # TODO: should just be the center of the rect not +12.5
-            self.unrealAsset = self.UEL.spawnActor('circle', x+(width/2), y+(height/2), self.actorLabel)
+            self.unrealActor = self.UEL.spawnActor('circle', x+(width/2), y+(height/2), self.actorLabel)
         
     def paint(self, painter, option, widget):
         """Sets the brush and pen for the sphere, and draws an ellipse to represent a sphere"""
@@ -305,8 +305,11 @@ class GridGraphicsView(QGraphicsView):
         self.gridWidth = None
         self.gridHeight = None
         self.gridCreated = False
+        self.UEL = UnrealLibrary()
         self.fitInView(self.scene.sceneRect(), Qt.KeepAspectRatio)
         self.scene.setSceneRect(0, 0, 1200, 600)
+        
+        self.scene.selectionChanged.connect(self.changeUnrealSelection)
         
         self.canSpawnItemOnPress = True
         self.copiedItems = None
@@ -369,7 +372,7 @@ class GridGraphicsView(QGraphicsView):
             # so we'll just print rather than raising an exception
             print("Must create a grid before adding assets")
             return
-        
+    
     def keyPressEvent(self, event):
         """ Handles key press hot keys and also calls the parent keyPressEvent()
         
@@ -417,11 +420,20 @@ class GridGraphicsView(QGraphicsView):
             width = item.width
             height = item.height
             cursorPos = self.mapToScene(self.mapFromGlobal(QCursor.pos()))
-            unrealAsset = item.unrealAsset
+            unrealActor = item.unrealActor
             if isinstance(item, SphereItem):
-                asset = SphereItem(cursorPos.x(), cursorPos.y(), width, height, unrealAsset)
+                asset = SphereItem(cursorPos.x(), cursorPos.y(), width, height, unrealActor)
                 self.scene.addItem(asset)
             else:
-                asset = SquareItem(cursorPos.x(), cursorPos.y(), width, height, unrealAsset)
+                asset = SquareItem(cursorPos.x(), cursorPos.y(), width, height, unrealActor)
                 self.scene.addItem(asset)
                 
+    def changeUnrealSelection(self):
+        """Reflects the selection change of the GridGraphicsView and selects those Unreal Engine counterparts"""
+        unrealActors = []
+        
+        for item in self.scene.selectedItems():
+            unrealActors.append(item.unrealActor)
+            
+        self.UEL.selectActors(unrealActors)
+         

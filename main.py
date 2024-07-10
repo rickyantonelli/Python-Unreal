@@ -48,7 +48,7 @@ class GridWidget(QWidget):
         """
         self.view.addItem(itemShape, 25, 25)
         # unrealActor = self.UEL.spawnActor(itemShape, x=12.5, y=12.5)
-        # item.unrealAsset = unrealActor
+        # item.unrealActor = unrealActor
 
 
 # TODO: Normally we would use if __name__ == '__main__':
@@ -62,6 +62,7 @@ if not QApplication.instance():
 unreal_stylesheet.setup()
 
 gridWidget = GridWidget()
+gridWidget.setWindowTitle("QuickBlock")
 gridWidget.view.createGrid(20, 1200, 600)
 gridWidget.show()
 

@@ -17,6 +17,7 @@ class UnrealLibrary():
             shape (str): The shape to be given
             x (float): The starting x position
             y (float): The starting y position
+            label (str): The label to set for the actor in Unreal
             
         Returns:
             The Unreal Engine asset
@@ -39,22 +40,33 @@ class UnrealLibrary():
         
         return spawnedActor
     
-    def copyActor(self, unrealAsset=None, label=None):
+    def copyActor(self, unrealActor=None, label=None):
         """Copies an Unreal actor and returns the duplicated actor
         
         Args:
-            unrealAsset (Actor): The unreal actor being duplicated
+            unrealActor (Actor): The unreal actor being duplicated
+            label (str): The label to set for the actor in Unreal
             
         Returns:
             The duplicated Unreal actor
         """
-        if not unrealAsset:
+        if not unrealActor:
             return
         
-        duplicatedActor = self.EAS.duplicate_actor(unreal.EditorActorSubsystem(), unrealAsset)
+        duplicatedActor = self.EAS.duplicate_actor(unreal.EditorActorSubsystem(), unrealActor)
         if label:
             duplicatedActor.set_actor_label(label)
         
         return duplicatedActor
     
+    def selectActors(self, unrealActors):
+        """Selects the actors in the Unreal Engine editor
         
+        Args:
+            unrealActors (list): The actors to select
+        """
+        
+        # this does not need to be a method if it's just one line
+        # but might want to do more here so we'll leave it
+        self.ELL.set_selected_level_actors(unrealActors)
+         

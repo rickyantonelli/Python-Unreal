@@ -48,7 +48,7 @@ class InfoWidget(QWidget):
         
     def zScaleSliderUpdate(self):
         if self.gridView and self.gridView.scene.selectedItems():
-            selectedItemAsset = self.gridView.scene.selectedItems()[0].unrealAsset
+            selectedItemAsset = self.gridView.scene.selectedItems()[0].unrealActor
             selectedItemAsset.set_actor_scale3d(unreal.Vector(selectedItemAsset.get_actor_scale3d().x, selectedItemAsset.get_actor_scale3d().y, self.zScaleSlider.value()/100))
             self.zSliderValue.setText(str(self.zScaleSlider.value()/100))
             
@@ -59,8 +59,8 @@ class InfoWidget(QWidget):
         print("updating")
         if self.gridView and self.gridView.scene.selectedItems():
             selectedItem = self.gridView.scene.selectedItems()[0]
-            selectedName = selectedItem.unrealAsset.get_actor_label()
-            self.zScaleSlider.setValue(selectedItem.unrealAsset.get_actor_scale3d().z*100)
+            selectedName = selectedItem.unrealActor.get_actor_label()
+            self.zScaleSlider.setValue(selectedItem.unrealActor.get_actor_scale3d().z*100)
             self.nameLineEdit.setText(selectedName)
         
     # TODO: Widget that displays info on the selected item
