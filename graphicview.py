@@ -1,7 +1,7 @@
 import unreal
 
 from PySide6.QtCore import Qt, QPointF, QRectF, QPoint
-from PySide6.QtGui import QPen, QBrush, QColor, QPainter, QPolygonF, QCursor, QAction
+from PySide6.QtGui import QPen, QBrush, QColor, QPainter, QPolygonF, QCursor, QAction, QTransform
 from PySide6.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsItem, QGraphicsRectItem, QMenu
 
 from unreallibrary import UnrealLibrary
@@ -51,6 +51,7 @@ class SquareItem(QGraphicsRectItem):
         
         self.width = width
         self.height = height
+        self.rotationAngle = 0
         
         self.selectedEdge = None
         self.clickPos = self.clickRect = None
@@ -58,6 +59,7 @@ class SquareItem(QGraphicsRectItem):
         self.handlePositioning()
         
         self.actorLabel = label
+        self.setTransformOriginPoint(self.rect().center())
         
         # sphere item 
         if not isinstance(self, SphereItem):
@@ -161,26 +163,94 @@ class SquareItem(QGraphicsRectItem):
         viewRight = sceneRect.right()
         viewBottom = sceneRect.bottom()
 
+        #TODO: Instead of just taking rect.top() and the others, need to actually find which of the 4 corners represents top,bottom,left,right
+        
+        rectCorners = []
+        if self.rotation() != 0:
+            rectCorners = self.getRotatedCorners()
+        else:
+            rectCorners = [rect.topLeft(), rect.topRight(), rect.bottomLeft(), rect.bottomRight()]
+        
+        topY = sceneRect.bottom()
+        rightX = sceneRect.left()
+        bottomY = sceneRect.top()
+        leftX = sceneRect.right()
+
+        # print("******")
+
+        for corner in rectCorners:
+            print(corner)
+            if corner.y() < topY:
+                topY = corner.y()
+            if corner.y() > bottomY:
+                bottomY = corner.y()
+            if corner.x() > rightX:
+                rightX = corner.x()
+            if corner.x() < leftX:
+                leftX = corner.x()
+                
+        # print("******")
+        
+        # print("top")
+        # print(topY)
+        # print(rect.top())
+        # print("left")
+        # print(leftX)
+        # print(rect.left())
+        # print("right")
+        # print(rightX)
+        # print(rect.right())
+        # print("bottom")
+        # print(bottomY)
+        # print(rect.bottom())
+        
+        # print("-------------")
+        
+        
+
         # if we reach an edge, then update the translation to be clamped at the edge that we hit
         # this is much smoother than just not moving when you hit an edge, as movement can still be done on the valid axis
-        if rect.top() < viewTop:
+        # if rect.top() < viewTop:
+        #     if self.selectedEdge is None:
+        #         rect.translate(0, viewTop-rect.top())
+        #     else:
+        #         rect.setTop(viewTop)
+        # if rect.left() < viewLeft:
+        #     if self.selectedEdge is None:
+        #         rect.translate(viewLeft-rect.left(), 0)
+        #     else:
+        #         rect.setLeft(viewLeft)
+        # if viewBottom < rect.bottom():
+        #     if self.selectedEdge is None:
+        #         rect.translate(0, viewBottom - rect.bottom())
+        #     else:
+        #         rect.setBottom(viewBottom)
+        # if viewRight < rect.right():
+        #     if self.selectedEdge is None:
+        #         rect.translate(viewRight - rect.right(), 0)
+        #     else:
+        #         rect.setRight(viewRight)
+                
+                
+                
+        if topY < viewTop:
             if self.selectedEdge is None:
-                rect.translate(0, viewTop-rect.top())
+                rect.translate(0, viewTop-topY)
             else:
                 rect.setTop(viewTop)
-        if rect.left() < viewLeft:
+        if leftX < viewLeft:
             if self.selectedEdge is None:
-                rect.translate(viewLeft-rect.left(), 0)
+                rect.translate(viewLeft-leftX, 0)
             else:
                 rect.setLeft(viewLeft)
-        if viewBottom < rect.bottom():
+        if viewBottom < bottomY:
             if self.selectedEdge is None:
-                rect.translate(0, viewBottom - rect.bottom())
+                rect.translate(0, viewBottom - bottomY)
             else:
                 rect.setBottom(viewBottom)
-        if viewRight < rect.right():
+        if viewRight < rightX:
             if self.selectedEdge is None:
-                rect.translate(viewRight - rect.right(), 0)
+                rect.translate(viewRight - rightX, 0)
             else:
                 rect.setRight(viewRight)
 
@@ -211,6 +281,7 @@ class SquareItem(QGraphicsRectItem):
         
         # apply the change to the item to its Unreal engine counterpart
         rect = QRectF(self.rect())
+        self.setTransformOriginPoint(self.rect().center())
         
         # take the center() of the rect as the point
         # if we do not take the center(), then resizing will not change position in Unreal in the way we'd like
@@ -272,7 +343,26 @@ class SquareItem(QGraphicsRectItem):
             self.UEL.ELL.destroy_actor(self.unrealActor)
         if self.scene():
             self.scene().removeItem(self)
-      
+            
+    def applyRotation(self, angle):
+        self.rotationAngle += angle
+        self.setRotation(self.rotationAngle)
+        self.setTransformOriginPoint(self.rect().center())
+        
+    def getRotatedCorners(self):
+        rect = QRectF(self.clickRect)
+        
+        transform = QTransform()
+        transform.rotate(self.rotation())
+        
+        rotatedCorners = []
+        rotatedCorners.append(self.mapToScene(transform.map(rect.topRight())))
+        rotatedCorners.append(self.mapToScene(transform.map(rect.topLeft())))
+        rotatedCorners.append(self.mapToScene(transform.map(rect.bottomLeft())))
+        rotatedCorners.append(self.mapToScene(transform.map(rect.bottomRight())))
+        
+        return rotatedCorners
+        
 class SphereItem(SquareItem):
     """Sphere class that inherits from SquareItem but paints an ellipse to represent the sphere in Unreal Engine"""
     def __init__(self, x, y, width, height, unrealActor=None, label=None):
@@ -312,6 +402,7 @@ class GridGraphicsView(QGraphicsView):
         self.scene.selectionChanged.connect(self.changeUnrealSelection)
         
         self.canSpawnItemOnPress = True
+        self.canRotate = True
         self.copiedItems = None
         self.numItems = 0
         
@@ -388,6 +479,21 @@ class GridGraphicsView(QGraphicsView):
             cursorPos = self.mapToScene(self.mapFromGlobal(QCursor.pos()))
             self.addItem('square', 25, 25, cursorPos.x(), cursorPos.y())
             self.canSpawnItemOnPress = False
+            
+        # rotate item
+        if self.canRotate and event.key() == Qt.Key_R:
+            for item in self.scene.selectedItems():
+                # transform = QTransform()
+                # centerPoint = item.rect().center()
+                # transform.translate(centerPoint.x(), centerPoint.y())  # Translate to center
+                # transform.rotate(45)  # Apply rotation
+                # transform.translate(-centerPoint.x(), -centerPoint.y())  # Translate back
+                
+                # item.setTransform(transform)
+                # item.update()
+                
+                
+                item.applyRotation(5)
             
         # copy selected items
         if event.key() == Qt.Key_C and event.modifiers() == Qt.ControlModifier:
