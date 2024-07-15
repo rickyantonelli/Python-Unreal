@@ -2,7 +2,7 @@ import unreal
 
 from PySide6.QtCore import Qt, QPointF, QRectF, QPoint
 from PySide6.QtGui import QPen, QBrush, QColor, QPainter, QPolygonF, QCursor, QAction
-from PySide6.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsItem, QGraphicsRectItem, QMenu
+from PySide6.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsItem, QGraphicsRectItem, QMenu, QGraphicsLineItem
 
 from unreallibrary import UnrealLibrary
 
@@ -313,7 +313,10 @@ class GridGraphicsView(QGraphicsView):
         
         self.canSpawnItemOnPress = True
         self.copiedItems = None
+        self.step = None
         self.numItems = 0
+        self.zoom = 0.5
+        self.scale(self.zoom, self.zoom)
         
     def createGrid(self, step=20, width=800, height=600):
         """Creates the grid in the graphics view and adds grid lines
@@ -323,22 +326,24 @@ class GridGraphicsView(QGraphicsView):
             width (int): The width of the grid
             height (int): The height of the grid
         """
+        self.gridWidth = width / self.zoom
+        self.gridHeight = height / self.zoom
+        self.step = step
+        
         # lines are light grey for now, can add a colorpicker if we want to add the flexibility
         lightGray = QColor(211, 211, 211)
         
         # TODO: Give some flexibility to the grid - for example maybe just lines at the end as an option
         
         # make this `+ 1` so that we add a line to the edges
-        for x in range(0, width + 1, step):
-            self.scene.addLine(x, 0, x, height, QPen(lightGray))
-        for y in range(0, height + 1, step):
-            self.scene.addLine(0, y, width, y, QPen(lightGray))
+        for x in range(0, int(self.gridWidth) + 1, step):
+            self.scene.addLine(x, 0, x, int(self.gridHeight), QPen(lightGray))
+        for y in range(0, int(self.gridHeight) + 1, step):
+            self.scene.addLine(0, y, int(self.gridWidth), y, QPen(lightGray))
         
         # this "grid" does not actually create a grid, but rather sets the lines for an area
         # and establishes boundaries for that area
         # we store gridWidth and gridHeight so that we can set the boundary for an item when we create it
-        self.gridWidth = width
-        self.gridHeight = height
         self.gridCreated = True
         
         self.scene.setSceneRect(0, 0, self.gridWidth, self.gridHeight)
@@ -436,4 +441,22 @@ class GridGraphicsView(QGraphicsView):
             unrealActors.append(item.unrealActor)
             
         self.UEL.selectActors(unrealActors)
+        
+    def clearSceneLines(self):
+        """Clears all the lines in the grid by deleting the QGraphicsLineItems"""
+        for item in self.scene.items():
+            if isinstance(item, QGraphicsLineItem):
+                self.scene.removeItem(item)
+    
+    def updateViewScale(self, zoom):
+        self.gridWidth = self.gridWidth * zoom
+        self.gridHeight = self.gridHeight * zoom
+        
+        self.scale(1/self.zoom, 1/self.zoom)
+        
+        self.zoom = zoom
+        self.scale(zoom, zoom)
+        self.clearSceneLines()
+        self.createGrid(self.step, self.gridWidth, self.gridHeight)
+        
          

@@ -5,18 +5,41 @@ from PySide6.QtGui import QPen, QPainter, QFont, QIntValidator
 from PySide6.QtWidgets import QWidget, QLabel, QVBoxLayout, QHBoxLayout, QLineEdit, QSlider, QStyle
 
 class InfoWidget(QWidget):
-    def __init__(self):
+    def __init__(self, gridView):
         super().__init__()
         self.nameLabel = QLabel("Name:")
         self.nameLineEdit = QLineEdit()
         self.nameLineEdit.setReadOnly(True)
 
+        self.gridView = gridView
         
-        self.gridView = None
+        # set up a slider that updates the z scale (which we dont see in the 2D view)
+        self.zoomSlider = ZSlider()
+        self.zoomSlider.setMinimum(0)
+        self.zoomSlider.setMaximum(200)
+        self.zoomSlider.setValue(self.gridView.zoom * 100)
+        self.zoomSlider.setTickInterval(100)
+        self.zoomSlider.setSingleStep(1)
+        self.zoomSlider.valueChanged.connect(self.zoomSliderUpdate)
+        
+        # simple QLineEdit next to the slider to indicate the value
+        self.zoomValue = QLineEdit()
+        self.zoomValue.setText(str(self.zoomSlider.value()/100))
+        self.zoomValue.setFixedWidth(50)
+        self.zoomValue.setAlignment(Qt.AlignCenter)
+        self.zoomValue.returnPressed.connect(self.zoomSliderValueUpdate)
+        zoomSliderValidator = QIntValidator(self.zoomSlider.minimum(), self.zoomSlider.maximum())
+        self.zoomValue.setValidator(zoomSliderValidator)
+        
         
         # set up a slider that updates the z scale (which we dont see in the 2D view)
         self.zScaleSlider = ZSlider()
         self.zScaleSlider.valueChanged.connect(self.zScaleSliderUpdate)
+        self.zScaleSlider.setMinimum(1)
+        self.zScaleSlider.setMaximum(1000)
+        self.zScaleSlider.setValue(25)
+        self.zScaleSlider.setTickInterval(1000)
+        self.zScaleSlider.setSingleStep(1)
         
         # simple QLineEdit next to the slider to indicate the value
         self.zSliderValue = QLineEdit()
@@ -24,36 +47,47 @@ class InfoWidget(QWidget):
         self.zSliderValue.setFixedWidth(50)
         self.zSliderValue.setAlignment(Qt.AlignCenter)
         self.zSliderValue.returnPressed.connect(self.zSliderValueUpdate)
-        validator = QIntValidator(self.zScaleSlider.minimum(), self.zScaleSlider.maximum())
-        self.zSliderValue.setValidator(validator)
+        zSliderValidator = QIntValidator(self.zScaleSlider.minimum(), self.zScaleSlider.maximum())
+        self.zSliderValue.setValidator(zSliderValidator)
+        
+        self.zoomSliderLayout = QHBoxLayout()
+        self.zoomSliderLabel = QLabel("Grid Zoom:")
+        self.zoomSliderLayout.addWidget(self.zoomSliderLabel)
+        self.zoomSliderLayout.addWidget(self.zoomSlider)
+        self.zoomSliderLayout.addWidget(self.zoomValue)
         
         self.nameLayout = QHBoxLayout()
         self.nameLayout.addWidget(self.nameLabel)
         self.nameLayout.addWidget(self.nameLineEdit)
+              
+        self.zSliderLayout = QHBoxLayout()
+        self.zSliderLabel = QLabel("Z-Scale:")
+        self.zSliderLayout.addWidget(self.zSliderLabel)
+        self.zSliderLayout.addWidget(self.zScaleSlider)
+        self.zSliderLayout.addWidget(self.zSliderValue)
         
         self.vertLayout = QVBoxLayout(self)
+        self.vertLayout.addLayout(self.zoomSliderLayout)
         self.vertLayout.addLayout(self.nameLayout)
-        # self.vertLayout.addSpacerItem()
-        
-        
-        self.sliderLayout = QHBoxLayout()
-        self.sliderLabel = QLabel("Z-Scale:")
-        self.sliderLayout.addWidget(self.sliderLabel)
-        self.sliderLayout.addWidget(self.zScaleSlider)
-        self.sliderLayout.addWidget(self.zSliderValue)
-        
-        self.vertLayout.addLayout(self.sliderLayout)
+        self.vertLayout.addLayout(self.zSliderLayout)
         
         self.setLayout(self.vertLayout)
         
     def zScaleSliderUpdate(self):
-        if self.gridView and self.gridView.scene.selectedItems():
+        if self.gridView.scene.selectedItems():
             selectedItemAsset = self.gridView.scene.selectedItems()[0].unrealActor
             selectedItemAsset.set_actor_scale3d(unreal.Vector(selectedItemAsset.get_actor_scale3d().x, selectedItemAsset.get_actor_scale3d().y, self.zScaleSlider.value()/100))
             self.zSliderValue.setText(str(self.zScaleSlider.value()/100))
             
+    def zoomSliderUpdate(self):
+        self.gridView.updateViewScale(self.zoomSlider.value()/100)
+        self.zoomValue.setText(str(self.zoomSlider.value()/100))
+            
     def zSliderValueUpdate(self):
         self.zScaleSlider.setValue(int(self.zSliderValue.text())*100)
+        
+    def zoomSliderValueUpdate(self):
+        self.zoomSlider.setValue(int(self.zoomValue.text())*100)
     
     def updateInfo(self):
         print("updating")
@@ -73,11 +107,6 @@ class ZSlider(QSlider):
         super().__init__()
         
         self.setOrientation(Qt.Horizontal)
-        self.setMinimum(1)
-        self.setMaximum(1000)
-        self.setValue(25)
-        self.setTickInterval(1000)
-        self.setSingleStep(1)
         
         # overriding the stylesheet in unreal_stylesheet
         self.setStyleSheet("""
