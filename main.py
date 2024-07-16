@@ -69,7 +69,6 @@ unreal_stylesheet.setup()
 
 gridWidget = GridWidget()
 gridWidget.setWindowTitle("QuickBlock")
-gridWidget.view.createGrid(20, 1200, 600)
 gridWidget.show()
 
 # parent widget to unreal

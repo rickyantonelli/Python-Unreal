@@ -43,6 +43,7 @@ class SquareItem(QGraphicsRectItem):
         self.setAcceptHoverEvents(True)
         self.setBrush(QBrush(Qt.GlobalColor.blue))
         self.setPen(QPen(Qt.GlobalColor.black))
+        self.setZValue(1) # so that the item is always layered ahead of grid lines
         
         self.offset = QPointF(0, 0)
         self.UEL = UnrealLibrary()
@@ -302,12 +303,12 @@ class GridGraphicsView(QGraphicsView):
         self.scene = QGraphicsScene(self)
         self.setScene(self.scene)
         self.setRenderHint(QPainter.RenderHint.Antialiasing)
-        self.gridWidth = None
-        self.gridHeight = None
+        self.gridWidth = 1200
+        self.gridHeight = 600
         self.gridCreated = False
         self.UEL = UnrealLibrary()
         self.fitInView(self.scene.sceneRect(), Qt.KeepAspectRatio)
-        self.scene.setSceneRect(0, 0, 1200, 600)
+        self.scene.setSceneRect(0, 0, self.gridWidth, self.gridHeight)
         
         self.scene.selectionChanged.connect(self.changeUnrealSelection)
         
@@ -318,7 +319,9 @@ class GridGraphicsView(QGraphicsView):
         self.zoom = 0.5
         self.scale(self.zoom, self.zoom)
         
-    def createGrid(self, step=20, width=800, height=600):
+        self.createGrid(20, self.gridWidth, self.gridHeight)
+        
+    def createGrid(self, step=20, width=800, height=600, zoom = None):
         """Creates the grid in the graphics view and adds grid lines
         
         Args:
@@ -326,8 +329,11 @@ class GridGraphicsView(QGraphicsView):
             width (int): The width of the grid
             height (int): The height of the grid
         """
-        self.gridWidth = width / self.zoom
-        self.gridHeight = height / self.zoom
+        if not zoom:
+            zoom = self.zoom
+        
+        self.gridWidth = width / zoom
+        self.gridHeight = height / zoom
         self.step = step
         
         # lines are light grey for now, can add a colorpicker if we want to add the flexibility
@@ -408,7 +414,6 @@ class GridGraphicsView(QGraphicsView):
         """ Handles key releasing so that quick spawn cant be held down + calls keyReleaseEvent()"""
         if event.key() == Qt.Key_F:
             self.canSpawnItemOnPress = True
-            print("release")
         super().keyReleaseEvent(event)
         
     def pasteItems(self, items):
@@ -448,14 +453,22 @@ class GridGraphicsView(QGraphicsView):
             if isinstance(item, QGraphicsLineItem):
                 self.scene.removeItem(item)
     
-    def updateViewScale(self, zoom):
-        self.gridWidth = self.gridWidth * zoom
-        self.gridHeight = self.gridHeight * zoom
+    def updateViewScale(self, newZoom):
+        """Updates the scale of the GridGraphicsView based on the new zoom
         
+        Args:
+            newZoom (float): The new zoom for the grid
+        """
+        # before implementing the new zoom, we must first revert the old zoom
+        # this is especially needed for scale(), as there is no base scale stored
+        # so applying a new zoom scale without reverting would scale onto the zoomed scale, which quickly breaks everything
+        self.gridWidth = self.gridWidth * self.zoom
+        self.gridHeight = self.gridHeight * self.zoom
         self.scale(1/self.zoom, 1/self.zoom)
         
-        self.zoom = zoom
-        self.scale(zoom, zoom)
+        # now update to the new zoom
+        self.zoom = newZoom
+        self.scale(newZoom, newZoom)
         self.clearSceneLines()
         self.createGrid(self.step, self.gridWidth, self.gridHeight)
         
