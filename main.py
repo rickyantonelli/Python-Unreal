@@ -18,7 +18,7 @@ class GridWidget(QWidget):
         
         self.addCubeButton = QPushButton("Add Cube")
         self.addSphereButton = QPushButton("Add Sphere")
-        self.infoWidget = InfoWidget()
+        self.infoWidget = InfoWidget(self.view)
         self.infoWidget.gridView = self.view
         self.view.scene.selectionChanged.connect(self.infoWidget.updateInfo)
         
@@ -39,6 +39,12 @@ class GridWidget(QWidget):
         
         self.addCubeButton.pressed.connect(lambda x = 'square': self.addItem(x))
         self.addSphereButton.pressed.connect(lambda x = 'circle':self.addItem(x))
+        
+        self.resize(1540, 660)
+        
+    def resizeEvent(self, event):
+        print(self.size())
+        super().resizeEvent(event)
         
     def addItem(self, itemShape='square'):
         """Adds an item to the grid (square or circle), and an Unreal Engine asset (cube or sphere)
@@ -63,7 +69,6 @@ unreal_stylesheet.setup()
 
 gridWidget = GridWidget()
 gridWidget.setWindowTitle("QuickBlock")
-gridWidget.view.createGrid(20, 1200, 600)
 gridWidget.show()
 
 # parent widget to unreal
