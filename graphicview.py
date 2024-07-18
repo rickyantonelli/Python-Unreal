@@ -33,7 +33,7 @@ class SquareItem(QGraphicsRectItem):
         bottomRight: Qt.SizeFDiagCursor,
     }
     
-    def __init__(self, x, y, width, height, unrealActor=None, label=None):
+    def __init__(self, x, y, width, height, unrealActor=None, label=None, unrealPath=None):
         """Init's the SquareItem, sets necessary flags and properties"""
         QGraphicsRectItem.__init__(self, QRectF(0, 0, width, height))
         self.setFlag(QGraphicsItem.ItemIsMovable, True)
@@ -70,7 +70,7 @@ class SquareItem(QGraphicsRectItem):
                 # set x and y to 12.5 since we are now using the center of the QRectF
                 # and our grid starts at (0,0) in the top left
                 # TODO: should just be the center of the rect not +12.5
-                self.unrealActor = self.UEL.spawnActor('square', x+(width/2), y+(height/2), self.actorLabel)
+                self.unrealActor = self.UEL.spawnActor('square', x+(width/2), y+(height/2), self.actorLabel, unrealPath)
         
     def setRectPos(self, x, y):
         rect = QRectF(self.rect())
@@ -276,9 +276,9 @@ class SquareItem(QGraphicsRectItem):
       
 class SphereItem(SquareItem):
     """Sphere class that inherits from SquareItem but paints an ellipse to represent the sphere in Unreal Engine"""
-    def __init__(self, x, y, width, height, unrealActor=None, label=None):
+    def __init__(self, x, y, width, height, unrealActor=None, label=None, unrealPath=None):
         """Init's SphereItem"""
-        super().__init__(x, y, width, height, unrealActor, label)
+        super().__init__(x, y, width, height, unrealActor, label, unrealPath)
         if unrealActor:
                 # if an asset is passed in, that means we are copying
                 self.unrealActor = self.UEL.copyActor(unrealActor, self.actorLabel)
@@ -307,9 +307,9 @@ class GridGraphicsView(QGraphicsView):
         self.gridHeight = 600
         self.gridCreated = False
         self.UEL = UnrealLibrary()
+        
         self.fitInView(self.scene.sceneRect(), Qt.KeepAspectRatio)
         self.scene.setSceneRect(0, 0, self.gridWidth, self.gridHeight)
-        
         self.scene.selectionChanged.connect(self.changeUnrealSelection)
         
         self.canSpawnItemOnPress = True
@@ -354,7 +354,7 @@ class GridGraphicsView(QGraphicsView):
         
         self.scene.setSceneRect(0, 0, self.gridWidth, self.gridHeight)
         
-    def addItem(self, shape='square', width=15, height=15, x=0, y=0):
+    def addItem(self, shape='square', width=15, height=15, x=0, y=0, assetPath=None):
         """Adds an item to the to the GridGraphicsView
         
         Each item is represented by a 2D shape, and represents a 3D shape that it generates in the Unreal Engine scene
@@ -370,9 +370,9 @@ class GridGraphicsView(QGraphicsView):
         label = "BlockoutActor{}".format(self.numItems) if self.numItems > 0 else "BlockoutActor"
         if self.gridCreated: # only add the item if the grid has been created
             if shape == 'circle':
-                asset = SphereItem(x, y, width, height, None, label)
+                asset = SphereItem(x, y, width, height, None, label, assetPath)
             else:
-                asset = SquareItem(x, y, width, height, None, label)
+                asset = SquareItem(x, y, width, height, None, label, assetPath)
             
             self.scene.addItem(asset)
             self.numItems += 1
@@ -432,10 +432,10 @@ class GridGraphicsView(QGraphicsView):
             cursorPos = self.mapToScene(self.mapFromGlobal(QCursor.pos()))
             unrealActor = item.unrealActor
             if isinstance(item, SphereItem):
-                asset = SphereItem(cursorPos.x(), cursorPos.y(), width, height, unrealActor)
+                asset = SphereItem(cursorPos.x(), cursorPos.y(), width, height, unrealActor, self.chosenAssetPath)
                 self.scene.addItem(asset)
             else:
-                asset = SquareItem(cursorPos.x(), cursorPos.y(), width, height, unrealActor)
+                asset = SquareItem(cursorPos.x(), cursorPos.y(), width, height, unrealActor, self.chosenAssetPath)
                 self.scene.addItem(asset)
                 
     def changeUnrealSelection(self):

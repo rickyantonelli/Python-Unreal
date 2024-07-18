@@ -9,8 +9,9 @@ class UnrealLibrary():
         self.EAL = unreal.EditorAssetLibrary
         self.ELL = unreal.EditorLevelLibrary
         self.EAS = unreal.EditorActorSubsystem
+        self.EUL = unreal.EditorUtilityLibrary
          
-    def spawnActor(self, shape='square', x=0, y=0, label=None):
+    def spawnActor(self, shape='square', x=0, y=0, label=None, assetPath=None):
         """Spawns an actor in Unreal Engine that is tied to an item in the 2D grid
         
         Args:
@@ -22,9 +23,14 @@ class UnrealLibrary():
         Returns:
             The Unreal Engine asset
         """
-        assetPath = "/Engine/BasicShapes/Cube.Cube"
-        if shape == 'circle':
-            assetPath = "/Engine/BasicShapes/Sphere.Sphere"
+        if not assetPath:
+            if shape == 'circle':
+                assetPath = "/Engine/BasicShapes/Sphere.Sphere"
+            else:
+                assetPath = "/Engine/BasicShapes/Cube.Cube"
+                
+                
+        print("assetPath is {}".format(assetPath))
         actorClass = self.EAL.load_asset(assetPath)
         
         # set the position to the same of the item

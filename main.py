@@ -2,12 +2,13 @@ import unreal
 import sys
 import unreal_stylesheet
 
-from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout
-from PySide6.QtCore import QThread, Qt
+from PySide6.QtWidgets import QApplication, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QFileDialog
+from PySide6.QtCore import Qt
 
 from actorinfowidget import InfoWidget
 from graphicview import GridGraphicsView
 from unreallibrary import UnrealLibrary
+from assetpickerwidget import AssetPicker
         
 class GridWidget(QWidget):
     """A QWidget to display a 2D grid that reflects items into the 3D space of the current Unreal Engine map"""
@@ -16,8 +17,11 @@ class GridWidget(QWidget):
         self.view = GridGraphicsView()
         self.UEL = UnrealLibrary()
         
+        self.assetPath = None
+        
         self.addCubeButton = QPushButton("Add Cube")
         self.addSphereButton = QPushButton("Add Sphere")
+        self.assetPickerWidget = AssetPicker(self.view)
         self.infoWidget = InfoWidget(self.view)
         self.infoWidget.gridView = self.view
         self.view.scene.selectionChanged.connect(self.infoWidget.updateInfo)
@@ -26,19 +30,24 @@ class GridWidget(QWidget):
         
         self.vertLayout = QVBoxLayout()
         self.buttonLayout = QHBoxLayout()
+        self.rightLayout = QVBoxLayout()
+        
         self.vertLayout.addWidget(self.view)
         self.buttonLayout.addWidget(self.addCubeButton)
         self.buttonLayout.addWidget(self.addSphereButton)
         self.vertLayout.addLayout(self.buttonLayout)
-        self.mainLayout.addLayout(self.vertLayout)
-        self.mainLayout.addWidget(self.infoWidget)
+        self.rightLayout.addWidget(self.infoWidget)
+        self.rightLayout.addWidget(self.assetPickerWidget)
         
-        self.setLayout(self.mainLayout)
+        self.mainLayout.addLayout(self.vertLayout)
+        self.mainLayout.addLayout(self.rightLayout)
         self.mainLayout.setStretch(0, 4)
         self.mainLayout.setStretch(1, 1)
+        self.setLayout(self.mainLayout)
         
         self.addCubeButton.pressed.connect(lambda x = 'square': self.addItem(x))
         self.addSphereButton.pressed.connect(lambda x = 'circle':self.addItem(x))
+        
         
         self.resize(1540, 660)
         
@@ -53,9 +62,6 @@ class GridWidget(QWidget):
             itemShape (str): The shape that we want to pass in
         """
         self.view.addItem(itemShape, 25, 25)
-        # unrealActor = self.UEL.spawnActor(itemShape, x=12.5, y=12.5)
-        # item.unrealActor = unrealActor
-
 
 # TODO: Normally we would use if __name__ == '__main__':
 # but this blocks the widget from running in Unreal, for now we'll leave it out
