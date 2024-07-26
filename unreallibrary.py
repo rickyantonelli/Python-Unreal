@@ -23,15 +23,24 @@ class UnrealLibrary():
         Returns:
             The Unreal Engine asset
         """
+        actorClass = None
+        
         if not assetPath:
             if shape == 'circle':
                 assetPath = "/Engine/BasicShapes/Sphere.Sphere"
             else:
                 assetPath = "/Engine/BasicShapes/Cube.Cube"
-                
-                
-        print("assetPath is {}".format(assetPath))
-        actorClass = self.EAL.load_asset(assetPath)
+            actorClass = self.EAL.load_asset(assetPath)
+        else:
+            # we have an asset path, but need to convert it to a relevant path
+            # newAssetPath = assetPath.replace(r"C:\Program Files\Epic Games\UE_5.2\Engine\Content", "/Engine")
+            print(assetPath)
+            actorName = assetPath.split("/")[-1].split(".")[0]
+            newAssetPath = "/Engine{}".format(assetPath)
+            newAssetPath = newAssetPath.replace("uasset", actorName)
+            print(newAssetPath)
+            
+            actorClass = self.EAL.load_asset(newAssetPath)
         
         # set the position to the same of the item
         actorLocation = unreal.Vector(x, y, 0)

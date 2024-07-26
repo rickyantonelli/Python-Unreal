@@ -42,15 +42,16 @@ class AssetPicker(QWidget):
         if dialog.exec() == QFileDialog.Accepted:
             selected_files = dialog.selectedFiles()
             if selected_files:
-                self.assetPath = selected_files[0].split("Content/")[1]
+                self.assetPath = selected_files[0].split("Content")[1]
                 
                 self.spawnAssetButton.setEnabled(True)
                 self.assetLineEdit.setEnabled(True)
                 assetName = self.assetPath.split("/")[-1].split(".")[0]
                 self.assetLineEdit.setText(assetName)
+                print(self.assetPath)
                 
     def spawnActor(self):
-        # self.gridView.addItem(assetPath=self.assetPath)
-        pass
+        self.gridView.addItem(assetPath=self.assetPath)
+        
                 
             

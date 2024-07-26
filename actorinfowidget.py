@@ -50,6 +50,8 @@ class InfoWidget(QWidget):
         zSliderValidator = QIntValidator(self.zSlider.minimum(), self.zSlider.maximum())
         self.zValue.setValidator(zSliderValidator)
         
+        # TODO: Something up with z-axis on new items when previously selecting an updated z-axis
+        
         self.zoomSliderLayout = QHBoxLayout()
         self.zoomSliderLabel = QLabel("Grid Zoom:")
         self.zoomSliderLayout.addWidget(self.zoomSliderLabel)

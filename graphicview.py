@@ -432,10 +432,10 @@ class GridGraphicsView(QGraphicsView):
             cursorPos = self.mapToScene(self.mapFromGlobal(QCursor.pos()))
             unrealActor = item.unrealActor
             if isinstance(item, SphereItem):
-                asset = SphereItem(cursorPos.x(), cursorPos.y(), width, height, unrealActor, self.chosenAssetPath)
+                asset = SphereItem(cursorPos.x(), cursorPos.y(), width, height, unrealActor)
                 self.scene.addItem(asset)
             else:
-                asset = SquareItem(cursorPos.x(), cursorPos.y(), width, height, unrealActor, self.chosenAssetPath)
+                asset = SquareItem(cursorPos.x(), cursorPos.y(), width, height, unrealActor)
                 self.scene.addItem(asset)
                 
     def changeUnrealSelection(self):
